@@ -1,0 +1,1094 @@
+<title>Ankieta wnętrzarska</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600&display=swap">
+<style>
+/* Układ: jedna spokojna kolumna formularza, zakładki części u góry, karty dla pomieszczeń, rzut z numerowanymi znacznikami */
+:root {
+  --bg: #f4f5f2;
+  --surface: #ffffff;
+  --fg: #1f2421;
+  --muted: #646d67;
+  --line: #d8ddd7;
+  --accent: #3d5a4c;
+  --accent-soft: #e2eae4;
+  --on-accent: #ffffff;
+  --note: #f1ede3;
+  --font-display: "Outfit", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #151917; --surface: #1d221f; --fg: #e6eae6; --muted: #9ba49e;
+    --line: #333a36; --accent: #8fbaa4; --accent-soft: #24312a; --on-accent: #10201a; --note: #2a2924;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #151917; --surface: #1d221f; --fg: #e6eae6; --muted: #9ba49e;
+  --line: #333a36; --accent: #8fbaa4; --accent-soft: #24312a; --on-accent: #10201a; --note: #2a2924;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 48px;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.wrap { max-width: 780px; margin: 0 auto; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 500; text-wrap: balance; margin: 0; }
+h1 { font-size: 2rem; letter-spacing: -0.01em; }
+h2 { font-size: 1.45rem; }
+h3 { font-size: 1.15rem; }
+p { margin: 0; }
+header.top { padding-block: 28px 8px; display: grid; gap: 8px; }
+.top-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.mode-badge { font-size: 0.8rem; color: var(--muted); }
+.lead { color: var(--muted); max-width: 62ch; }
+.greeting { white-space: pre-line; max-width: 62ch; }
+
+nav.steps {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--bg); padding-block: 12px; margin-bottom: 8px;
+  display: flex; gap: 6px; border-bottom: 1px solid var(--line); overflow-x: auto;
+}
+nav.steps button {
+  font: 500 0.9rem var(--font-body); color: var(--muted);
+  background: none; border: 1px solid transparent; border-radius: 999px;
+  padding: 7px 14px; cursor: pointer; white-space: nowrap;
+}
+nav.steps button .n { font-variant-numeric: tabular-nums; opacity: .7; margin-right: 4px; }
+nav.steps button[aria-current="step"] { background: var(--accent); color: var(--on-accent); }
+nav.steps button:not([aria-current="step"]):hover { border-color: var(--line); color: var(--fg); }
+
+.pane { display: grid; gap: 28px; padding-top: 16px; }
+.pane-head { display: grid; gap: 4px; }
+.group { display: grid; gap: 18px; padding-bottom: 24px; border-bottom: 1px solid var(--line); }
+.group > h3 { color: var(--accent); font-size: 0.8rem; text-transform: uppercase; letter-spacing: .08em; font-family: var(--font-body); font-weight: 600; }
+
+.q { display: grid; gap: 8px; min-width: 0; }
+.q > .label { font-weight: 500; }
+.q > .hint, .hint { color: var(--muted); font-size: 0.85rem; }
+.q > .hint { margin-top: -6px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { position: relative; }
+.chip input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.chip span {
+  display: inline-block; padding: 6px 12px; border: 1px solid var(--line);
+  border-radius: 8px; background: var(--surface); font-size: 0.9rem; cursor: pointer;
+  transition: background .12s, border-color .12s;
+}
+.chip input:checked + span { background: var(--accent-soft); border-color: var(--accent); }
+.chip input[type="checkbox"]:checked + span::before { content: "✓ "; color: var(--accent); font-weight: 600; }
+.chip input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+input[type="text"], input[type="number"], textarea, select {
+  font: inherit; color: var(--fg); background: var(--surface);
+  border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%; min-width: 0;
+}
+input[type="number"] { max-width: 9rem; }
+textarea { min-height: 72px; resize: vertical; }
+input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+
+.sub { display: grid; gap: 16px; margin-left: 6px; padding: 14px 0 6px 16px; border-left: 2px solid var(--accent-soft); }
+.sub > .sub-title { font-size: 0.85rem; color: var(--accent); font-weight: 600; }
+
+.room { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px; display: grid; gap: 18px; }
+.room-head { display: flex; align-items: center; gap: 10px; }
+.room .q input[type="text"], .room .q input[type="number"], .room .q textarea, .room .chip span { background: var(--bg); }
+.empty { color: var(--muted); font-style: italic; }
+
+/* Rzut */
+.plan { position: relative; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #ffffff; max-width: 100%; }
+.plan img { display: block; width: 100%; height: auto; user-select: none; -webkit-user-drag: none; }
+.plan.editable { cursor: crosshair; }
+.marker {
+  position: absolute; transform: translate(-50%, -50%);
+  min-width: 30px; height: 30px; padding: 0 6px; border-radius: 15px;
+  background: var(--accent); color: var(--on-accent); border: 2px solid #ffffff;
+  font: 600 0.85rem var(--font-body); font-variant-numeric: tabular-nums;
+  display: grid; place-items: center; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,.25);
+}
+.num {
+  flex: none; min-width: 28px; height: 28px; padding: 0 6px; border-radius: 14px;
+  background: var(--accent); color: var(--on-accent);
+  font: 600 0.85rem var(--font-body); font-variant-numeric: tabular-nums;
+  display: inline-grid; place-items: center;
+}
+.num.ghost { background: var(--accent-soft); color: var(--accent); }
+.rows { display: grid; gap: 10px; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.row > .grow { flex: 1 1 180px; min-width: 0; }
+.row > .fixed { font-weight: 500; }
+.row .sub { flex-basis: 100%; }
+.icon-btn { border: 1px solid var(--line); background: var(--surface); color: var(--muted); border-radius: 8px; width: 36px; height: 36px; cursor: pointer; font-size: 1rem; }
+.icon-btn:hover { color: var(--fg); }
+.note { background: var(--note); border-radius: 10px; padding: 14px 16px; display: grid; gap: 6px; font-size: 0.92rem; }
+.note strong { font-weight: 600; }
+.hints { display: grid; gap: 6px; }
+.hints p { background: var(--accent-soft); border-radius: 8px; padding: 8px 12px; font-size: 0.9rem; }
+
+.nav-bottom, .btn-row { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.btn-row { justify-content: flex-start; }
+.btn {
+  font: 500 0.95rem var(--font-body); padding: 10px 18px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--surface); color: var(--fg);
+}
+.btn.small { padding: 7px 12px; font-size: 0.88rem; }
+.btn.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.btn:focus-visible, nav.steps button:focus-visible, .marker:focus-visible, .icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.file-label { position: relative; overflow: hidden; display: inline-block; }
+.file-label input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+.thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.thumbs:empty { display: none; }
+.thumb { position: relative; aspect-ratio: 1; max-width: 100%; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); background: var(--surface); }
+.thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thumb-del { position: absolute; top: 4px; right: 4px; width: 26px; height: 26px; border-radius: 13px; border: 0; background: rgba(0,0,0,.6); color: #fff; cursor: pointer; }
+.summary .thumbs { margin-top: 6px; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); }
+.q-toggle { display: none; align-items: center; gap: 6px; justify-self: start; font-size: 0.78rem; color: var(--muted); background: var(--accent-soft); padding: 2px 9px 2px 6px; border-radius: 6px; cursor: pointer; }
+.q-toggle input { margin: 0; accent-color: var(--accent); }
+body.designer .q-toggle { display: inline-flex; }
+.q.off > :not(.q-toggle) { opacity: .4; }
+.q.off > .q-toggle { background: var(--note); }
+body.client .q.off { display: none !important; }
+body.client .all-off { display: none !important; }
+details.type-card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 20px; }
+details.type-card[open] { padding-bottom: 20px; }
+details.type-card > summary { cursor: pointer; font: 500 1.1rem var(--font-display); }
+details.type-card > .body { display: grid; gap: 18px; padding-top: 16px; }
+details.type-card .q input[type="text"], details.type-card .q input[type="number"], details.type-card .q textarea, details.type-card .chip span { background: var(--bg); }
+.summary { display: grid; gap: 20px; }
+.summary section { display: grid; gap: 6px; }
+.summary h3 { color: var(--accent); }
+.summary dl { margin: 0; display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 6px 16px; }
+.summary dt { color: var(--muted); }
+.summary dd { margin: 0; white-space: pre-line; }
+@media (max-width: 520px) { .summary dl { grid-template-columns: 1fr; } .summary dd { margin-bottom: 8px; } }
+.toast { color: var(--accent); font-size: 0.9rem; min-height: 1.4em; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="top-row">
+      <span class="mode-badge" id="modeBadge">Tryb projektantki</span>
+      <button type="button" class="btn small" id="modeBtn">Zobacz jako klient</button>
+    </div>
+    <h1 id="title">Ankieta wnętrzarska</h1>
+    <p class="greeting" id="greeting"></p>
+    <p class="lead" id="lead">Kilka pytań o Was i Wasz dom. Zaznaczajcie to, co Was dotyczy. Kolejne pytania pojawią się same, tylko wtedy, gdy będą potrzebne.</p>
+  </header>
+
+  <nav class="steps" aria-label="Części ankiety">
+    <button type="button" data-step="0" id="stepPrep"><span class="n">✎</span>Przygotowanie</button>
+    <button type="button" data-step="1"><span class="n">1</span>Dom i domownicy</button>
+    <button type="button" data-step="2"><span class="n">2</span>Pomieszczenia</button>
+    <button type="button" data-step="3"><span class="n">3</span>Podsumowanie</button>
+  </nav>
+
+  <!-- Przygotowanie ankiety przez projektantkę -->
+  <div class="pane" data-pane="0" id="prep">
+    <div class="pane-head">
+      <h2>Przygotowanie ankiety</h2>
+      <p class="lead">Ta część jest tylko dla Ciebie. Klient jej nie zobaczy. Wgraj rzut, oznacz pomieszczenia i zdecyduj, o co pytać.</p>
+    </div>
+
+    <section class="group">
+      <h3>Klient</h3>
+      <div class="q">
+        <label class="label" for="prep_client">Dla kogo jest ankieta?</label>
+        <input type="text" id="prep_client" placeholder="np. Anna i Tomasz Nowakowie, ul. Lipowa 5">
+      </div>
+      <div class="q">
+        <label class="label" for="prep_greeting">Powitanie dla klienta</label>
+        <textarea id="prep_greeting" placeholder="np. Dzień dobry! Przed naszym spotkaniem proszę o wypełnienie tej ankiety. Zajmie ok. 20 minut."></textarea>
+      </div>
+    </section>
+
+    <section class="group">
+      <h3>Rzut mieszkania</h3>
+      <div class="btn-row">
+        <label class="btn small file-label">Wgraj rzut (zdjęcie lub skan)
+          <input type="file" id="planFile" accept="image/*">
+        </label>
+        <button type="button" class="btn small" id="sampleBtn">Wczytaj przykładowy rzut</button>
+        <button type="button" class="btn small" id="clearPlanBtn">Usuń rzut i pomieszczenia</button>
+      </div>
+      <p class="hint" id="planHint">Kliknij na rzucie w miejscu pomieszczenia, żeby dodać numerek. Na liście pod rzutem wybierz, czym jest to pomieszczenie, albo zostaw „Klient wybierze”.</p>
+      <div id="prepPlan"></div>
+      <div class="rows" id="prepRows"></div>
+      <div class="btn-row">
+        <button type="button" class="btn small" id="addRoomPrep">Dodaj pomieszczenie bez zaznaczania na rzucie</button>
+      </div>
+    </section>
+
+    <section class="group">
+      <h3>Pytania</h3>
+      <p>W zakładkach „Dom i domownicy” i „Pomieszczenia” przy każdym pytaniu jest przełącznik <strong>„W ankiecie”</strong>. Odznacz go, a klient tego pytania nie zobaczy. Zaznacz ponownie, żeby je przywrócić.</p>
+      <p class="hint" id="offCount"></p>
+      <div class="btn-row"><button type="button" class="btn small" id="restoreAll">Przywróć wszystkie wyłączone pytania</button></div>
+    </section>
+
+    <div class="note">
+      <strong>Jak wysłać ankietę klientowi?</strong>
+      <p>Tego jeszcze nie ma. Na razie wszystko, co tu ustawisz, zapisuje się w tej przeglądarce. Przycisk „Zobacz jako klient” pokazuje, jak ankietę zobaczy klient. Wysyłanie linku do klienta i odbieranie odpowiedzi dodamy w następnym kroku.</p>
+    </div>
+
+    <div class="nav-bottom"><span></span><button type="button" class="btn primary" data-go="1">Dalej</button></div>
+  </div>
+
+  <form id="form" autocomplete="off">
+    <div class="pane" data-pane="1" id="pane1" hidden></div>
+
+    <div class="pane" data-pane="2" id="pane2" hidden>
+      <div class="pane-head">
+        <h2>Pomieszczenia</h2>
+        <p class="lead" id="roomsLead">Na rzucie zaznaczone są pomieszczenia. Przy tych z pytajnikiem wybierzcie, do czego mają służyć. Dla każdego pojawi się osobny zestaw pytań.</p>
+      </div>
+      <div id="clientPlan"></div>
+      <section class="group" data-section="Przeznaczenie pomieszczeń" id="assignGroup">
+        <h3>Przeznaczenie pomieszczeń</h3>
+        <div class="rows" id="clientRows"></div>
+        <div class="btn-row"><button type="button" class="btn small" id="addExtra">Dodaj pomieszczenie, którego nie ma na rzucie</button></div>
+        <div class="hints" id="hints"></div>
+      </section>
+      <div id="roomCards" class="pane" style="padding-top:0"></div>
+      <div id="typeCards" class="pane" style="padding-top:0" hidden></div>
+      <div class="nav-bottom"><button type="button" class="btn" data-go="1">Wstecz</button><button type="button" class="btn primary" data-go="3">Dalej</button></div>
+    </div>
+
+    <div class="pane" data-pane="3" id="pane3" hidden>
+      <div class="pane-head">
+        <h2>Podsumowanie</h2>
+        <p class="lead">Tak wyglądają Wasze odpowiedzi. Możecie wrócić do dowolnej części i coś poprawić.</p>
+      </div>
+      <div class="q">
+        <label class="label" for="uwagi_koncowe">Czy chcecie dodać coś jeszcze?</label>
+        <textarea id="uwagi_koncowe" name="uwagi_koncowe" placeholder="Wszystko, o co nie zapytałam, a co jest dla Was ważne"></textarea>
+      </div>
+      <div class="summary" id="summary"></div>
+      <div class="nav-bottom">
+        <button type="button" class="btn" id="reset">Wyczyść odpowiedzi</button>
+        <button type="button" class="btn primary" id="copy">Kopiuj odpowiedzi</button>
+      </div>
+      <div class="toast" id="toast" role="status"></div>
+      <textarea id="copyFallback" hidden readonly></textarea>
+    </div>
+  </form>
+</div>
+
+<script>
+/* =========================================================
+   PYTANIA ANKIETY
+   Tu edytujemy treść. Typy pytań:
+     radio  – jedna odpowiedź      checks – kilka odpowiedzi
+     text   – krótki tekst         area   – dłuższy tekst
+     num    – liczba
+   when: { "Tak": [pytania] } – pytania pokażą się po wybraniu „Tak"
+         (kilka odpowiedzi rozdzielamy znakiem |)
+   Opcja z dodatkowymi pytaniami: ["Lodówka", [pytania]]
+   ========================================================= */
+const radio = (id, label, options, extra = {}) => ({ id, label, type: "radio", options, ...extra });
+const checks = (id, label, options, extra = {}) => ({ id, label, type: "checks", options, ...extra });
+const text = (id, label, extra = {}) => ({ id, label, type: "text", ...extra });
+const area = (id, label, extra = {}) => ({ id, label, type: "area", ...extra });
+const num = (id, label, extra = {}) => ({ id, label, type: "num", ...extra });
+const photos = (id, label, extra = {}) => ({ id, label, type: "photos", ...extra });
+const TN = ["Tak", "Nie"];
+const uwagi = (label = "Wasze uwagi") => area("uwagi", label);
+
+const PART1 = [
+  { title: "Podstawowe informacje", questions: [
+    text("imie", "Imię i nazwisko"),
+    radio("typ", "Rodzaj nieruchomości", ["Mieszkanie", "Dom jednorodzinny", "Segment / szeregowiec", "Inne"]),
+    radio("stan", "Stan nieruchomości", ["Stan deweloperski", "Do remontu", "Zamieszkana, do odświeżenia"]),
+    num("metraz", "Powierzchnia (m²)"),
+    radio("na_ile", "Na jak długo planujecie tu mieszkać?", ["Na wiele lat", "Kilka lat", "Mieszkanie na wynajem", "Na sprzedaż"]),
+    text("termin", "Kiedy chcecie się wprowadzić lub skończyć prace?"),
+  ]},
+  { title: "Domownicy", questions: [
+    num("dorosli", "Ile osób dorosłych będzie mieszkać?"),
+    text("wzrost", "Wzrost domowników", { hint: "Pomaga dobrać wysokość blatów, umywalek i półek, np. 165 i 190 cm" }),
+    radio("dzieci", "Czy w domu mieszkają dzieci?", TN, { when: { "Tak": [
+      num("liczba", "Ile dzieci?"),
+      text("wiek", "W jakim wieku są dzieci?", { hint: "np. 3, 7 i 12 lat" }),
+      radio("osobne", "Czy każde dziecko ma mieć osobny pokój?", ["Tak", "Nie, wspólny pokój", "Jeszcze nie wiemy"]),
+    ]}}),
+    radio("powiekszenie", "Czy planujecie powiększenie rodziny w najbliższych latach?", ["Tak", "Nie", "Być może"]),
+    radio("potrzeby", "Czy ktoś z domowników ma szczególne potrzeby?", TN, { hint: "np. ograniczona mobilność, alergie, nadwrażliwość na hałas lub światło", when: { "Tak": [
+      area("opis", "Opiszcie je krótko"),
+    ]}}),
+  ]},
+  { title: "Zwierzęta", questions: [
+    radio("zwierzeta", "Czy macie zwierzęta?", TN, { when: { "Tak": [
+      checks("rodzaj", "Jakie zwierzęta?", [
+        ["Pies", [
+          num("ile", "Ile psów?"),
+          text("rasa", "Rasa"),
+          radio("wielkosc", "Wielkość", ["Mały", "Średni", "Duży"]),
+          checks("potrzeby", "Co warto zaplanować?", ["Legowisko", "Miejsce na miski", "Prysznic lub brodzik do mycia łap", "Szafka na smycze i akcesoria", "Bramka zabezpieczająca", "Wyjście do ogrodu"]),
+        ]],
+        ["Kot", [
+          num("ile", "Ile kotów?"),
+          text("rasa", "Rasa"),
+          checks("potrzeby", "Co warto zaplanować?", ["Kuweta w zabudowie", "Drapak", "Półki lub ścieżka na ścianie", "Miejsce na miski", "Siatka na okna lub balkon"]),
+          num("kuwety", "Ile ma być kuwet?", { hint: "Przy kilku kotach zwykle potrzeba więcej kuwet, często o jedną więcej niż kotów" }),
+          text("kuweta", "Gdzie mają stać kuwety?"),
+        ]],
+        ["Ptaki", [text("opis", "Ile i jakie? Jak duża jest klatka lub woliera?")]],
+        ["Gryzonie", [text("opis", "Ile i jakie? Jak duża jest klatka?")]],
+        ["Akwarium lub terrarium", [text("wymiary", "Wymiary i waga (jeśli znacie)")]],
+        ["Inne", [text("opis", "Jakie?")]],
+      ]),
+      radio("odpornosc", "Czy materiały mają być odporne na pazury i sierść?", ["Tak, to ważne", "Nie ma znaczenia"]),
+    ]}}),
+  ]},
+  { title: "Codzienne życie", questions: [
+    radio("praca", "Czy ktoś pracuje lub uczy się w domu?", TN, { when: { "Tak": [
+      num("ile", "Ile osób?"),
+      radio("miejsce", "Czego potrzebujecie?", ["Osobnego gabinetu", "Kącika do pracy", "Wystarczy stół"]),
+    ]}}),
+    radio("poranki", "Czy rano wszyscy szykują się w tym samym czasie?", ["Tak, łazienka bywa zajęta", "Nie, mijamy się"], { hint: "Pomaga zdecydować o dwóch umywalkach lub drugiej łazience" }),
+    checks("hobby", "Hobby i zajęcia, na które potrzeba miejsca", [
+      "Gotowanie", "Czytanie",
+      ["Gra na instrumencie", [text("jaki", "Na jakim instrumencie?")]],
+      ["Rowery", [num("ile", "Ile rowerów trzeba przechowywać?")]],
+      "Sport w domu", "Majsterkowanie", "Szycie / rękodzieło", "Rośliny", "Gry / kino domowe",
+      ["Inne", [text("jakie", "Jakie?")]],
+    ]),
+    radio("goscie", "Jak często przyjmujecie gości?", ["Rzadko", "Czasami", "Często"]),
+    radio("nocleg", "Czy goście zostają na noc?", ["Tak, potrzebny pokój gościnny", "Czasem, wystarczy rozkładana sofa", "Nie"]),
+    radio("sprzatanie", "Jak ważne jest łatwe sprzątanie?", ["Bardzo ważne", "Średnio", "Nie ma znaczenia"]),
+    radio("robot", "Robot sprzątający", ["Mamy lub planujemy", "Nie"], { when: { "Mamy lub planujemy": [
+      radio("stacja", "Czy zaplanować schowaną stację dokującą?", TN),
+    ]}}),
+    area("przeszkadza", "Co przeszkadza Wam w obecnym mieszkaniu?"),
+    area("lubicie", "Co lubicie w obecnym mieszkaniu i chcecie zachować?"),
+  ]},
+  { title: "Instalacje", questions: [
+    radio("ogrzewanie", "Rodzaj ogrzewania", ["Gazowe", "Pompa ciepła", "Miejskie", "Elektryczne", "Inne / nie wiem"]),
+    checks("cieplo", "Jak ciepło trafia do pomieszczeń?", ["Grzejniki", "Ogrzewanie podłogowe", "Kominek"]),
+    radio("klima", "Klimatyzacja", ["Jest", "Planujemy", "Nie"]),
+    radio("rekuperacja", "Rekuperacja (wentylacja z odzyskiem ciepła)", ["Jest", "Planujemy", "Nie", "Nie wiem"]),
+    radio("rolety", "Rolety zewnętrzne", ["Są", "Planujemy", "Nie"]),
+    radio("smart", "Inteligentny dom (sterowanie światłem, roletami itp.)", ["Tak", "Do rozważenia", "Nie"]),
+    radio("alarm", "Alarm lub monitoring", ["Tak", "Nie"]),
+  ]},
+  { title: "Styl i oczekiwania", questions: [
+    checks("styl", "Jakie style się Wam podobają?", ["Nowoczesny", "Skandynawski", "Japandi", "Industrialny", "Klasyczny", "Glamour", "Boho", "Minimalistyczny", "Rustykalny", "Nie wiem, potrzebuję pomocy"]),
+    area("efekt", "Co chcecie czuć po wejściu do domu?", { hint: "np. spokój, przytulność, dużo światła, porządek" }),
+    text("kolory_tak", "Kolory, które lubicie"),
+    text("kolory_nie", "Kolory, których nie chcecie"),
+    checks("materialy", "Materiały, które lubicie", ["Drewno", "Kamień", "Beton / mikrocement", "Metal", "Szkło", "Len i naturalne tkaniny", "Rattan / wiklina", "Skóra"]),
+    checks("podlogi", "Jakie podłogi preferujecie?", ["Deska drewniana", "Panele", "Winyl", "Płytki", "Mikrocement", "Wykładzina"]),
+    radio("swiatlo", "Barwa światła", ["Ciepła, przytulna", "Neutralna", "Zależnie od pomieszczenia"]),
+    radio("dekoracje", "Ile dekoracji i drobiazgów lubicie?", ["Jak najmniej", "Umiarkowanie", "Dużo, lubimy pamiątki"]),
+    area("ekspozycja", "Obrazy, kolekcje lub pamiątki do wyeksponowania"),
+    text("inspiracje", "Inspiracje: linki", { hint: "np. link do tablicy na Pintereście" }),
+    photos("inspiracje_zdjecia", "Inspiracje: Wasze zdjęcia", { hint: "Zrzuty ekranu, zdjęcia z katalogów, wnętrza, które Wam się podobają" }),
+    area("meble", "Meble lub przedmioty, które zostają i trzeba je uwzględnić"),
+    area("wymarzone", "Wymarzone meble lub przedmioty, które chcecie mieć w nowym wnętrzu", { hint: "np. konkretny fotel, stolik, lampa, które już upatrzyliście. Możecie wkleić link albo opisać" }),
+    photos("wymarzone_zdjecia", "Zdjęcia wymarzonych mebli i przedmiotów"),
+    text("budzet", "Orientacyjny budżet na wykończenie i wyposażenie"),
+  ]},
+];
+
+/* Część 2: pomieszczenia. Klucz = nazwa przeznaczenia. */
+const KITCHEN_APPLIANCES = [
+  ["Lodówka", [
+    checks("cechy", "Jaka lodówka?", ["Wolnostojąca", "W zabudowie", "Side by side", "Z kostkarką", "Z dystrybutorem wody", "Z szufladą świeżości", "Osobna zamrażarka"]),
+    uwagi(),
+  ]],
+  ["Zmywarka", [
+    radio("szer", "Szerokość", ["45 cm", "60 cm"]),
+    radio("zabudowa", "Zabudowa", ["Pełna zabudowa", "Wolnostojąca"]),
+    uwagi(),
+  ]],
+  ["Piekarnik", [
+    checks("cechy", "Jaki piekarnik?", ["Pod blatem", "W słupku na wysokości oczu", "Z funkcją pary", "Kompaktowy", "Dwa piekarniki"]),
+    uwagi(),
+  ]],
+  ["Płyta grzewcza", [
+    radio("rodzaj", "Rodzaj", ["Indukcyjna", "Gazowa", "Ceramiczna"]),
+    radio("szer", "Szerokość", ["60 cm", "70–80 cm", "90 cm i więcej"]),
+    uwagi(),
+  ]],
+  ["Okap", [
+    radio("rodzaj", "Rodzaj", ["Podszafkowy / do zabudowy", "Kominowy przyścienny", "Wyspowy", "Sufitowy", "Zintegrowany z płytą"]),
+    uwagi(),
+  ]],
+  ["Mikrofalówka", [radio("rodzaj", "Rodzaj", ["W zabudowie", "Wolnostojąca", "Piekarnik z mikrofalą"]), uwagi()]],
+  ["Ekspres do kawy", [radio("rodzaj", "Rodzaj", ["W zabudowie", "Wolnostojący"]), uwagi()]],
+  ["Zlew", [
+    checks("cechy", "Jaki zlew?", ["Jednokomorowy", "Dwukomorowy", "Z ociekaczem", "Podblatowy", "Granitowy", "Stalowy"]),
+    uwagi(),
+  ]],
+  ["Kran z wrzątkiem lub filtrem", [uwagi()]],
+  ["Młynek do odpadków", [uwagi()]],
+  ["Kosze do segregacji", [num("ile", "Na ile frakcji?"), uwagi()]],
+  ["Małe AGD na blacie", [checks("jakie", "Co stoi na blacie na co dzień?", ["Czajnik", "Toster", "Robot kuchenny", "Blender", "Frytkownica beztłuszczowa", "Ekspres przelewowy"]), uwagi()]],
+  ["Inne", [area("jakie", "Jakie sprzęty?")]],
+];
+
+const ROOMS = {
+  "Kuchnia": [
+    radio("uklad", "Preferowany układ", ["Jednorzędowa", "W literę L", "W literę U", "Z wyspą", "Z półwyspem", "Nie wiem"]),
+    radio("otwarta", "Kuchnia otwarta na salon?", ["Tak", "Nie, osobna", "Częściowo"]),
+    radio("gotowanie", "Jak często gotujecie?", ["Codziennie", "Kilka razy w tygodniu", "Rzadko"]),
+    num("osoby", "Ile osób gotuje jednocześnie?"),
+    radio("sniadania", "Gdzie jecie na co dzień?", ["Przy wyspie lub barze", "Przy stole w kuchni", "W jadalni"]),
+    checks("sprzety", "Jakie sprzęty planujecie?", KITCHEN_APPLIANCES, { hint: "Zaznaczcie sprzęt, a pojawią się pytania o szczegóły" }),
+    checks("przechowywanie", "Przechowywanie", ["Spiżarnia", "Szafka cargo", "Szuflady zamiast szafek dolnych", "Szafki wiszące", "Otwarte półki", "Wysokie słupki do sufitu"]),
+    radio("blat", "Blat", ["Kamień / spiek", "Drewno", "Laminat", "Konglomerat", "Nie wiem"]),
+    uwagi(),
+  ],
+  "Salon": [
+    radio("tv", "Telewizor w salonie?", TN, { when: { "Tak": [
+      text("rozmiar", "Wielkość telewizora (cale)"),
+      radio("montaz", "Montaż", ["Na ścianie", "Na szafce"]),
+      radio("audio", "Soundbar lub kino domowe?", TN),
+    ]}}),
+    num("sofa", "Ile osób ma się zmieścić na sofie?"),
+    radio("sofa_typ", "Rodzaj sofy", ["Narożnik", "Prosta sofa", "Sofa i fotele", "Rozkładana do spania"]),
+    checks("elementy", "Co ma się znaleźć w salonie?", ["Kominek", "Kącik do czytania", "Biblioteczka", "Miejsce do zabawy dla dzieci", "Barek", "Duże rośliny", "Biurko"]),
+    uwagi(),
+  ],
+  "Jadalnia": [
+    num("codziennie", "Ile miejsc przy stole na co dzień?"),
+    num("swieta", "A ile przy okazjach (święta, goście)?"),
+    radio("stol", "Kształt stołu", ["Prostokątny", "Okrągły", "Owalny", "Rozkładany", "Bez znaczenia"]),
+    uwagi(),
+  ],
+  "Sypialnia": [
+    text("dla_kogo", "Dla kogo jest ta sypialnia?", { hint: "np. sypialnia główna, dla babci" }),
+    radio("lozko", "Szerokość łóżka", ["90 cm", "120 cm", "140 cm", "160 cm", "180 cm", "200 cm"]),
+    radio("lozko_typ", "Rodzaj łóżka", ["Tapicerowane", "Drewniane", "Z pojemnikiem na pościel", "Bez znaczenia"]),
+    radio("stoliki", "Stoliki nocne", ["Dwa", "Jeden", "Bez stolików"], { when: { "Dwa|Jeden": [
+      num("gniazdka", "Ile gniazdek przy każdym stoliku?"),
+      checks("dodatki", "Przy stoliku przydadzą się też:", ["Ładowarka USB", "Ładowarka bezprzewodowa", "Włącznik światła w całej sypialni"]),
+    ]}}),
+    checks("swiatlo", "Światło do czytania", ["Kinkiety", "Lampki nocne", "Oświetlenie pod łóżkiem", "Niepotrzebne"]),
+    radio("ubrania", "Gdzie ubrania?", ["Szafa w sypialni", "Osobna garderoba", "Garderoba w sypialni"]),
+    radio("zaciemnienie", "Zaciemnienie okien", ["Rolety zaciemniające", "Zasłony blackout", "Niepotrzebne"]),
+    checks("inne", "Dodatkowo", ["Telewizor", "Toaletka", "Biurko", "Fotel", "Ławka w nogach łóżka"]),
+    uwagi(),
+  ],
+  "Pokój dziecka": [
+    text("dla_kogo", "Dla kogo jest ten pokój?", { hint: "np. córka, 7 lat" }),
+    radio("lozko", "Łóżko", ["Pojedyncze", "Piętrowe", "Na antresoli", "Rosnące z dzieckiem"]),
+    radio("nauka", "Miejsce do nauki", ["Biurko", "Na razie niepotrzebne"]),
+    checks("elementy", "Co jeszcze?", ["Miejsce do zabawy", "Przechowywanie zabawek", "Ścianka wspinaczkowa", "Tablica do rysowania", "Miejsce na książki"]),
+    text("ulubione", "Ulubione kolory lub motywy dziecka"),
+    uwagi(),
+  ],
+  "Łazienka": [
+    radio("ktora", "Jaka to łazienka?", ["Główna", "Przy sypialni", "Dla dzieci", "Dla gości"]),
+    radio("umywalki", "Ile umywalek?", ["Jedna", "Dwie"]),
+    radio("kapiel", "Prysznic czy wanna?", ["Prysznic", "Wanna", "Prysznic i wanna"], { when: {
+      "Prysznic|Prysznic i wanna": [
+        radio("forma", "Forma prysznica", ["Walk-in (bez drzwi)", "Kabina z drzwiami"]),
+        radio("brodzik", "Brodzik", ["Z brodzikiem", "Bez brodzika, odpływ w podłodze"]),
+        checks("dodatki", "Dodatki pod prysznicem", ["Deszczownica", "Wnęka na kosmetyki", "Siedzisko", "Termostat"]),
+      ],
+      "Wanna|Prysznic i wanna": [
+        radio("wanna", "Rodzaj wanny", ["Wolnostojąca", "W zabudowie", "Narożna"]),
+      ],
+    }}),
+    radio("wc", "Toaleta", ["Podwieszana", "Stojąca", "Bez toalety"], { when: { "Podwieszana|Stojąca": [
+      radio("bidet", "Bidet", ["Osobny bidet", "Deska z funkcją bidetu", "Słuchawka bidetowa", "Niepotrzebny"]),
+    ]}}),
+    radio("pralka", "Pralka w tej łazience?", TN),
+    checks("inne", "Dodatkowo", ["Grzejnik drabinkowy", "Ogrzewanie podłogowe", "Lustro z oświetleniem", "Szafka z lustrem", "Szafka na środki czystości", "Okno"]),
+    radio("sciany", "Ściany", ["Płytki do sufitu", "Płytki tylko przy wodzie", "Mikrocement", "Nie wiem"]),
+    uwagi(),
+  ],
+  "WC": [
+    radio("umywalka", "Umywalka", ["Mała umywalka", "Standardowa", "Bez umywalki"]),
+    uwagi(),
+  ],
+  "Gabinet": [
+    num("stanowiska", "Ile stanowisk pracy?"),
+    num("monitory", "Ile monitorów na stanowisko?"),
+    radio("biurko", "Biurko", ["Zwykłe", "Z regulacją wysokości", "Bez znaczenia"]),
+    radio("wideo", "Czy macie dużo wideorozmów?", ["Tak, ważne ładne tło", "Czasami", "Nie"]),
+    checks("przechowywanie", "Przechowywanie", ["Dokumenty", "Książki", "Drukarka", "Sprzęt komputerowy"]),
+    uwagi(),
+  ],
+  "Garderoba": [
+    num("osoby", "Dla ilu osób?"),
+    radio("proporcje", "Co przeważa?", ["Rzeczy na wieszakach", "Rzeczy na półkach", "Po równo"]),
+    checks("dodatki", "Dodatkowo", ["Lustro", "Szuflady", "Miejsce na buty", "Miejsce na walizki", "Pufa lub siedzisko"]),
+    uwagi(),
+  ],
+  "Przedpokój": [
+    num("buty", "Ile par butów trzeba schować na co dzień?"),
+    checks("elementy", "Co ma się znaleźć?", ["Szafa na okrycia", "Ławka lub siedzisko", "Lustro", "Miejsce na wózek", "Miejsce na rower", "Miejsce na klucze i drobiazgi", "Odkurzacz pionowy z ładowaniem"]),
+    uwagi(),
+  ],
+  "Pralnia": [
+    radio("ustawienie", "Pralka i suszarka", ["W słupku jedna na drugiej", "Obok siebie", "Tylko pralka"]),
+    checks("elementy", "Co jeszcze?", ["Zlew gospodarczy", "Miejsce do suszenia na sznurkach", "Deska do prasowania", "Miejsce na kosze z praniem", "Szafka na chemię"]),
+    uwagi(),
+  ],
+  "Pokój gościnny": [
+    radio("spanie", "Na czym śpią goście?", ["Łóżko", "Rozkładana sofa"]),
+    radio("funkcja", "Czy pokój ma też inną funkcję?", ["Nie", "Też gabinet", "Też pokój hobby"]),
+    uwagi(),
+  ],
+  "Pokój hobby": [
+    area("co", "Czym będziecie się tu zajmować?"),
+    checks("potrzeby", "Czego potrzebujecie?", ["Duży stół roboczy", "Dużo przechowywania", "Dobre światło dzienne", "Wyciszenie", "Zlew"]),
+    uwagi(),
+  ],
+  "Spiżarnia": [uwagi("Co chcecie w niej przechowywać?")],
+  "Balkon lub taras": [
+    checks("elementy", "Co ma się tu znaleźć?", ["Stół z krzesłami", "Leżaki lub sofa", "Rośliny", "Oświetlenie", "Grill", "Osłona przed słońcem lub sąsiadami"]),
+    uwagi(),
+  ],
+  "Inne": [
+    checks("funkcje", "Jakie funkcje ma łączyć to pomieszczenie?", ["Gabinet", "Pokój gościnny", "Pokój dziecka w przyszłości", "Pokój hobby", "Garderoba", "Ćwiczenia", "Przechowywanie"]),
+    radio("zmiana", "Czy przeznaczenie może się zmienić w ciągu kilku lat?", ["Tak", "Nie", "Być może"], { hint: "Wtedy zaplanujemy wnętrze tak, żeby łatwo było je przearanżować" }),
+    uwagi(),
+  ],
+};
+const ROOM_TYPES = Object.keys(ROOMS).filter(t => t !== "Inne");
+/* Gdy projektantka nie przygotuje rzutu ani listy, klient zobaczy te pomieszczenia: */
+const DEFAULT_ROOMS = ["Kuchnia", "Salon", "Sypialnia", "Łazienka", "Przedpokój"];
+
+/* Przykładowy rzut (do podglądu) */
+const SAMPLE_PLAN = "data:image/svg+xml," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400"><rect width="600" height="400" fill="#fff"/><g fill="none" stroke="#3a3f3c" stroke-width="6"><rect x="6" y="6" width="588" height="388"/><path d="M260 6v214M6 220h254M400 6v388M260 130h140M260 280h140M400 160h194M260 220v174"/></g><g fill="#fff"><rect x="255" y="150" width="10" height="40"/><rect x="300" y="125" width="40" height="10"/><rect x="300" y="275" width="40" height="10"/><rect x="395" y="60" width="10" height="40"/><rect x="395" y="200" width="10" height="40"/><rect x="255" y="240" width="10" height="40"/></g><text x="590" y="390" text-anchor="end" font-family="sans-serif" font-size="12" fill="#8a918c">rzut przykładowy</text></svg>`);
+const SAMPLE_ROOMS = [
+  { label: "", type: "Salon", x: 21.7, y: 27.5 },
+  { label: "", type: "Kuchnia", x: 55, y: 16 },
+  { label: "", type: "", x: 83, y: 20 },
+  { label: "", type: "", x: 83, y: 70 },
+  { label: "", type: "Przedpokój", x: 55, y: 51 },
+  { label: "", type: "Łazienka", x: 55, y: 85 },
+  { label: "", type: "", x: 21.7, y: 77.5 },
+];
+
+/* =========================================================
+   MECHANIKA (tu zwykle nie trzeba nic zmieniać)
+   ========================================================= */
+const KEY = "ankieta-wnetrzarska-v2";
+let uid = 0;
+const newId = () => "r" + Date.now().toString(36) + (uid++);
+const state = { mode: "designer", prep: { client: "", greeting: "", plan: null, rooms: [], offQ: [] }, extra: [], answers: {}, photos: {} };
+const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); return true; } catch { return false; } };
+
+const slug = s => s.toLowerCase().replace(/ł/g, "l").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+const el = (tag, attrs = {}, ...kids) => {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v === null || v === undefined) continue;
+    if (k === "class") e.className = v; else if (k === "text") e.textContent = v; else e.setAttribute(k, v);
+  }
+  kids.flat().forEach(k => k && e.append(k));
+  return e;
+};
+const $ = id => document.getElementById(id);
+
+function renderQ(q, prefix, ctx) {
+  const id = prefix + q.id;
+  const wrap = el("div", { class: "q", "data-q": id, "data-label": q.label, "data-key": keyOf(id) });
+  if (ctx) wrap.dataset.ctx = ctx;
+  const tgBox = el("input", { type: "checkbox", "aria-label": "Pytanie w ankiecie: " + q.label });
+  tgBox.checked = true;
+  tgBox.addEventListener("change", e => { e.stopPropagation(); setOff(wrap.dataset.key, !tgBox.checked); });
+  wrap.append(el("label", { class: "q-toggle" }, tgBox, el("span", { text: "W ankiecie" })));
+  const labelId = id + "__label";
+  const choice = q.type === "radio" || q.type === "checks";
+  wrap.append(choice ? el("div", { class: "label", id: labelId, text: q.label }) : el("label", { class: "label", for: id, id: labelId, text: q.label }));
+  if (q.hint) wrap.append(el("div", { class: "hint", text: q.hint }));
+  if (choice) {
+    const group = el("div", { class: "chips", role: q.type === "radio" ? "radiogroup" : "group", "aria-labelledby": labelId });
+    const details = [];
+    q.options.forEach((opt, i) => {
+      const [name, sub] = Array.isArray(opt) ? opt : [opt, null];
+      const input = el("input", { type: q.type === "radio" ? "radio" : "checkbox", name: id, value: name, id: id + "__" + i });
+      group.append(el("label", { class: "chip" }, input, el("span", { text: name })));
+      if (sub) details.push(subBlock(id, name, sub, id + "_" + slug(name) + "_", name));
+    });
+    wrap.append(group, ...details);
+  } else if (q.type === "photos") {
+    wrap.dataset.photos = "1";
+    const input = el("input", { type: "file", id, accept: "image/*", multiple: "" });
+    const thumbs = el("div", { class: "thumbs" });
+    const msg = el("div", { class: "hint", role: "status" });
+    wrap.append(el("div", { class: "btn-row" }, el("label", { class: "btn small file-label" }, "Dodaj zdjęcia", input)), thumbs, msg);
+    input.addEventListener("change", async () => {
+      const files = [...input.files]; input.value = "";
+      for (const f of files) {
+        try { (state.photos[id] ||= []).push(await shrink(f, 1200, 0.8)); } catch {}
+      }
+      if (!persist()) {
+        state.photos[id].splice(-files.length);
+        persist();
+        msg.textContent = "Za dużo zdjęć, żeby je zapamiętać w tej przeglądarce. Usuńcie któreś albo dodajcie mniej naraz.";
+      } else msg.textContent = "";
+      drawThumbs(id);
+    });
+    queueMicrotask(() => drawThumbs(id));
+  } else if (q.type === "area") {
+    wrap.append(el("textarea", { id, name: id }));
+  } else {
+    wrap.append(el("input", { type: q.type === "num" ? "number" : "text", id, name: id, min: q.type === "num" ? "0" : null, inputmode: q.type === "num" ? "numeric" : null }));
+  }
+  if (q.when) for (const [when, qs] of Object.entries(q.when)) wrap.append(subBlock(id, when, qs, id + "_", null));
+  return wrap;
+}
+function subBlock(parent, when, qs, prefix, title) {
+  const b = el("div", { class: "sub", "data-parent": parent, "data-when": when });
+  if (title) b.append(el("div", { class: "sub-title", text: title }));
+  qs.forEach(q => b.append(renderQ(q, prefix, title)));
+  return b;
+}
+
+function shrink(file, max, quality) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const c = document.createElement("canvas");
+        c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+        const ctx = c.getContext("2d");
+        ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, c.width, c.height);
+        ctx.drawImage(img, 0, 0, c.width, c.height);
+        resolve(c.toDataURL("image/jpeg", quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+function drawThumbs(id) {
+  const box = document.querySelector(`[data-q="${CSS.escape(id)}"] .thumbs`);
+  if (!box) return;
+  box.replaceChildren(...(state.photos[id] || []).map((src, i) => {
+    const del = el("button", { type: "button", class: "thumb-del", "aria-label": `Usuń zdjęcie ${i + 1}`, text: "✕" });
+    del.addEventListener("click", () => { state.photos[id].splice(i, 1); persist(); drawThumbs(id); });
+    return el("div", { class: "thumb" }, el("img", { src, alt: `Zdjęcie ${i + 1}` }), del);
+  }));
+}
+
+/* Włączanie i wyłączanie pytań (klucz nie zależy od konkretnego pokoju) */
+const keyOf = id => id.replace(/^pok_[^_]+_/, "pok_");
+function setOff(key, off) {
+  state.prep.offQ = state.prep.offQ.filter(k => k !== key);
+  if (off) state.prep.offQ.push(key);
+  persist(); applyOff();
+}
+function applyOff(root = document) {
+  root.querySelectorAll(".q[data-key]").forEach(w => {
+    const off = state.prep.offQ.includes(w.dataset.key);
+    w.classList.toggle("off", off);
+    const t = w.querySelector(":scope > .q-toggle");
+    t.querySelector("input").checked = !off;
+    t.querySelector("span").textContent = off ? "Wyłączone" : "W ankiecie";
+  });
+  document.querySelectorAll("[data-group]").forEach(g => {
+    g.classList.toggle("all-off", [...g.querySelectorAll(":scope > .q")].every(q => q.classList.contains("off")));
+  });
+  const n = state.prep.offQ.length;
+  $("offCount").textContent = n ? `Wyłączone pytania: ${n}` : "Wszystkie pytania są włączone.";
+  $("restoreAll").hidden = !n;
+}
+
+const form = $("form");
+
+/* ---------- Część 1 ---------- */
+const pane1 = $("pane1");
+pane1.append(el("div", { class: "pane-head" },
+  el("h2", { text: "Dom i domownicy" }),
+  el("p", { class: "lead", text: "Pytania o cały dom i o to, jak w nim żyjecie." })));
+PART1.forEach(g => {
+  const sec = el("section", { class: "group", "data-section": g.title, "data-group": g.title }, el("h3", { text: g.title }));
+  g.questions.forEach(q => sec.append(renderQ(q, "", null)));
+  pane1.append(sec);
+});
+pane1.append(el("div", { class: "nav-bottom" },
+  el("button", { type: "button", class: "btn", "data-go": "0", id: "back1", text: "Wstecz" }),
+  el("button", { type: "button", class: "btn primary", "data-go": "2", text: "Dalej" })));
+
+/* ---------- Wartości formularza ---------- */
+function values(name) {
+  return [...form.querySelectorAll(`[name="${CSS.escape(name)}"]`)]
+    .filter(i => (i.type === "radio" || i.type === "checkbox") ? i.checked : i.value.trim() !== "")
+    .map(i => i.value.trim());
+}
+function applyValues(root) {
+  root.querySelectorAll("[name]").forEach(i => {
+    const v = state.answers[i.name];
+    if (!v) return;
+    if (i.type === "radio" || i.type === "checkbox") i.checked = v.includes(i.value);
+    else i.value = v[0] ?? "";
+  });
+}
+function saveAnswers() {
+  const data = {};
+  new FormData(form).forEach((v, k) => { (data[k] ||= []).push(v); });
+  state.answers = data;
+  persist();
+}
+
+/* ---------- Pomieszczenia ---------- */
+function roomList() {
+  const base = state.prep.rooms.length ? state.prep.rooms
+    : DEFAULT_ROOMS.map((t, i) => ({ id: "d" + i, label: t, type: t, x: null, y: null }));
+  return [...base, ...state.extra];
+}
+function roomType(r) {
+  if (r.type) return r.type;
+  const v = values("funkcja_" + r.id)[0];
+  return v || "";
+}
+function fixedName(r) { return r.type === "Inne" ? (r.label || "Inne") : r.type; }
+function roomName(r) {
+  if (r.type) return fixedName(r);
+  const t = roomType(r);
+  if (t === "Inne") return values("funkcja_" + r.id + "_inne")[0] || "Inne";
+  return t;
+}
+
+function planFigure(editable) {
+  if (!state.prep.plan) return null;
+  const fig = el("div", { class: "plan" + (editable ? " editable" : "") });
+  const img = el("img", { src: state.prep.plan, alt: "Rzut mieszkania" });
+  fig.append(img);
+  const rooms = state.prep.rooms;
+  rooms.forEach((r, i) => {
+    if (r.x === null || r.x === undefined) return;
+    const nm = editable ? fixedName(r) : roomName(r);
+    const m = el("button", { type: "button", class: "marker", style: `left:${r.x}%;top:${r.y}%`, title: nm || "Do wyboru przez klienta", "aria-label": `${i + 1}. ${nm || "do wyboru"}`, text: String(i + 1) + (nm ? "" : "?") });
+    m.addEventListener("click", ev => {
+      ev.stopPropagation();
+      const target = document.querySelector(`[data-room-row="${r.id}"]`);
+      if (target) { target.scrollIntoView({ block: "center" }); const f = target.querySelector("input,select"); if (f) f.focus({ preventScroll: true }); }
+    });
+    fig.append(m);
+  });
+  if (editable) {
+    fig.addEventListener("click", ev => {
+      const rect = img.getBoundingClientRect();
+      const x = Math.round(((ev.clientX - rect.left) / rect.width) * 1000) / 10;
+      const y = Math.round(((ev.clientY - rect.top) / rect.height) * 1000) / 10;
+      state.prep.rooms.push({ id: newId(), label: "", type: "", x, y });
+      persist(); renderPrep();
+      const sels = $("prepRows").querySelectorAll("select");
+      const last = sels[sels.length - 1]; if (last) last.focus({ preventScroll: true });
+    });
+  }
+  return fig;
+}
+
+/* Przygotowanie (projektantka) */
+function typeSelect(value, emptyLabel) {
+  const s = el("select", {});
+  s.append(el("option", { value: "", text: emptyLabel }));
+  [...ROOM_TYPES, "Inne"].forEach(t => s.append(el("option", { value: t, text: t })));
+  s.value = value || "";
+  return s;
+}
+function renderPrep() {
+  $("prep_client").value = state.prep.client;
+  $("prep_greeting").value = state.prep.greeting;
+  $("prepPlan").replaceChildren(planFigure(true) || "");
+  $("planHint").hidden = !state.prep.plan;
+  const rows = $("prepRows");
+  rows.replaceChildren();
+  if (!state.prep.rooms.length) {
+    rows.append(el("p", { class: "empty", text: state.prep.plan
+      ? "Kliknij na rzucie, żeby dodać pierwsze pomieszczenie."
+      : "Nie dodano jeszcze pomieszczeń. Klient zobaczy podstawową listę: " + DEFAULT_ROOMS.join(", ") + "." }));
+  }
+  state.prep.rooms.forEach((r, i) => {
+    const sel = typeSelect(r.type, "? Klient wybierze");
+    sel.querySelector('option[value="Inne"]').textContent = "Inne (wpiszę nazwę)";
+    sel.setAttribute("aria-label", `Pomieszczenie ${i + 1}`);
+    sel.addEventListener("change", () => { r.type = sel.value; if (r.type !== "Inne") r.label = ""; persist(); renderPrep(); });
+    let name = null;
+    if (r.type === "Inne") {
+      name = el("input", { type: "text", value: r.label, "aria-label": `Nazwa pomieszczenia ${i + 1}`, placeholder: "Nazwa, np. pokój do jogi" });
+      name.addEventListener("input", () => { r.label = name.value; persist(); });
+    }
+    const del = el("button", { type: "button", class: "icon-btn", "aria-label": `Usuń pomieszczenie ${i + 1}`, text: "✕" });
+    del.addEventListener("click", () => { state.prep.rooms.splice(i, 1); persist(); renderPrep(); });
+    rows.append(el("div", { class: "row", "data-room-row": r.id },
+      el("span", { class: "num" + (r.x === null || r.x === undefined ? " ghost" : ""), text: String(i + 1) }),
+      el("div", { class: "grow" }, sel), del,
+      name ? el("div", { class: "sub" }, name) : null));
+  });
+}
+$("prep_client").addEventListener("input", e => { state.prep.client = e.target.value; persist(); renderHeader(); });
+$("prep_greeting").addEventListener("input", e => { state.prep.greeting = e.target.value; persist(); renderHeader(); });
+$("restoreAll").addEventListener("click", () => { state.prep.offQ = []; persist(); applyOff(); });
+$("addRoomPrep").addEventListener("click", () => {
+  state.prep.rooms.push({ id: newId(), label: "", type: "", x: null, y: null });
+  persist(); renderPrep();
+});
+$("sampleBtn").addEventListener("click", () => {
+  state.prep.plan = SAMPLE_PLAN;
+  state.prep.rooms = SAMPLE_ROOMS.map(r => ({ ...r, id: newId() }));
+  persist(); renderPrep();
+});
+const clearBtn = $("clearPlanBtn");
+clearBtn.addEventListener("click", () => {
+  if (!clearBtn.dataset.armed) {
+    clearBtn.dataset.armed = "1"; clearBtn.textContent = "Na pewno? Kliknij jeszcze raz";
+    setTimeout(() => { delete clearBtn.dataset.armed; clearBtn.textContent = "Usuń rzut i pomieszczenia"; }, 4000);
+    return;
+  }
+  delete clearBtn.dataset.armed; clearBtn.textContent = "Usuń rzut i pomieszczenia";
+  state.prep.plan = null; state.prep.rooms = []; persist(); renderPrep();
+});
+$("planFile").addEventListener("change", async e => {
+  const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+  try { state.prep.plan = await shrink(f, 1600, 0.85); } catch { return; }
+  state.prep.rooms = state.prep.rooms.filter(r => r.x === null || r.x === undefined);
+  persist(); renderPrep();
+});
+
+/* Pomieszczenia (klient) */
+function renderTypeCards() {
+  const box = $("typeCards");
+  if (!box.children.length) {
+    [...ROOM_TYPES, "Inne"].forEach(t => {
+      const body = el("div", { class: "body" });
+      ROOMS[t].forEach(q => body.append(renderQ(q, `pok_t_${slug(t)}_`, null)));
+      box.append(el("details", { class: "type-card" }, el("summary", { text: t }), body));
+    });
+    refresh();
+  }
+  applyOff(box);
+}
+function renderClientRooms() {
+  const designer = state.mode !== "client";
+  $("typeCards").hidden = !designer;
+  $("clientPlan").hidden = designer; $("assignGroup").hidden = designer; $("roomCards").hidden = designer;
+  if (designer) {
+    $("roomsLead").textContent = "Tu widzisz pytania dla każdego rodzaju pomieszczenia. Rozwiń wybrane i odznacz pytania, których nie chcesz zadawać. Same pomieszczenia ustawiasz w zakładce Przygotowanie.";
+    renderTypeCards();
+    return;
+  }
+  $("clientPlan").replaceChildren(planFigure(false) || "");
+  $("roomsLead").textContent = state.prep.plan
+    ? "Na rzucie zaznaczone są pomieszczenia. Przy numerach ze znakiem zapytania wybierzcie, czym ma być dane pomieszczenie. Dla każdego pojawi się osobny zestaw pytań."
+    : "Oto lista pomieszczeń. Przy każdym bez przeznaczenia wybierzcie, do czego ma służyć. Dla każdego pojawi się osobny zestaw pytań.";
+  const rows = $("clientRows");
+  rows.replaceChildren();
+  roomList().forEach((r, i) => {
+    const isExtra = state.extra.includes(r);
+    const row = el("div", { class: "row", "data-room-row": r.id });
+    row.append(el("span", { class: "num" + (r.x === null || r.x === undefined ? " ghost" : ""), text: String(i + 1) }));
+    if (r.type && !isExtra) {
+      row.append(el("span", { class: "fixed grow", text: fixedName(r) }));
+    } else {
+      const fname = "funkcja_" + r.id;
+      const wrap = el("div", { class: "q grow", "data-q": fname, "data-label": `Pomieszczenie ${i + 1}` });
+      const sel = typeSelect("", "? Wybierzcie, czym ma być");
+      sel.name = fname; sel.setAttribute("aria-label", `Przeznaczenie pomieszczenia ${i + 1}`);
+      sel.querySelector('option[value="Inne"]').textContent = "Inne (wpiszę)";
+      wrap.append(sel, el("div", { class: "sub", "data-parent": fname, "data-when": "Inne" },
+        el("div", { class: "q" },
+          el("label", { class: "label", for: fname + "_inne", text: "Krótka nazwa" }),
+          el("input", { type: "text", id: fname + "_inne", name: fname + "_inne", placeholder: "np. gabinet i pokój gościnny" })),
+        el("div", { class: "q" },
+          el("label", { class: "label", for: fname + "_opis", text: "Opiszcie, co tu widzicie" }),
+          el("div", { class: "hint", text: "np. na co dzień gabinet, okazjonalnie pokój dla gości, a za kilka lat pokój dziecka" }),
+          el("textarea", { id: fname + "_opis", name: fname + "_opis" }))));
+      row.append(wrap);
+    }
+    if (isExtra) {
+      const del = el("button", { type: "button", class: "icon-btn", "aria-label": "Usuń to pomieszczenie", text: "✕" });
+      del.addEventListener("click", () => { state.extra = state.extra.filter(x => x !== r); persist(); renderClientRooms(); });
+      row.append(del);
+    }
+    rows.append(row);
+  });
+  applyValues(rows);
+  renderRoomCards();
+}
+$("addExtra").addEventListener("click", () => {
+  state.extra.push({ id: newId(), label: "", type: "", x: null, y: null });
+  persist(); renderClientRooms();
+  const sels = $("clientRows").querySelectorAll("select");
+  const last = sels[sels.length - 1]; if (last) last.focus();
+});
+
+function renderRoomCards() {
+  const box = $("roomCards");
+  const existing = new Map([...box.children].map(c => [c.dataset.key, c]));
+  const keep = [];
+  roomList().forEach((r, i) => {
+    const t = roomType(r);
+    if (!t || !ROOMS[t]) return;
+    const key = r.id + "|" + t;
+    let card = existing.get(key);
+    const title = roomName(r);
+    if (!card) {
+      card = el("section", { class: "room", "data-key": key });
+      card.append(el("div", { class: "room-head" }, el("span", { class: "num", text: String(i + 1) }), el("h2", {})));
+      ROOMS[t].forEach(q => card.append(renderQ(q, `pok_${r.id}_${slug(t)}_`, null)));
+      applyValues(card);
+      applyOff(card);
+    }
+    card.querySelector(".num").textContent = String(i + 1);
+    card.querySelector("h2").textContent = title;
+    card.dataset.section = `${i + 1}. ${title}`;
+    keep.push(card);
+  });
+  box.replaceChildren(...keep);
+  if (!keep.length) box.append(el("p", { class: "empty", text: "Wybierzcie przeznaczenie pomieszczeń powyżej, a pojawią się pytania." }));
+  renderHints();
+  refresh();
+}
+function renderHints() {
+  const types = roomList().map(roomType);
+  const hints = [];
+  if (values("dzieci")[0] === "Tak" && !types.includes("Pokój dziecka")) hints.push("Wspomnieliście o dzieciach. Czy któryś pokój będzie pokojem dziecka?");
+  if (values("praca_miejsce")[0] === "Osobnego gabinetu" && !types.includes("Gabinet")) hints.push("Potrzebujecie gabinetu. Który pokój nim będzie?");
+  if ((values("nocleg")[0] || "").startsWith("Tak") && !types.includes("Pokój gościnny")) hints.push("Potrzebujecie pokoju gościnnego. Który to będzie?");
+  if (values("hobby").includes("Rowery") && !types.includes("Przedpokój")) hints.push("Macie rowery. Gdzie chcecie je przechowywać?");
+  $("hints").replaceChildren(...hints.map(h => el("p", { text: h })));
+}
+
+/* ---------- Widoczność pytań zależnych ---------- */
+function refresh() {
+  form.querySelectorAll("[data-parent]").forEach(b => {
+    const v = values(b.dataset.parent);
+    b.hidden = !b.dataset.when.split("|").some(w => v.includes(w));
+  });
+}
+form.addEventListener("change", e => {
+  saveAnswers();
+  if (e.target.name && e.target.name.startsWith("funkcja_")) renderRoomCards();
+  else { refresh(); renderHints(); }
+});
+form.addEventListener("input", e => {
+  if (!e.target.matches("input[type=text],input[type=number],textarea")) return;
+  saveAnswers();
+  if (e.target.name && e.target.name.startsWith("funkcja_")) {
+    roomList().forEach(r => { const c = $("roomCards").querySelector(`[data-key^="${r.id}|"]`); if (c) { const t = roomName(r); c.querySelector("h2").textContent = t; } });
+  }
+});
+
+/* ---------- Tryb i kroki ---------- */
+function renderHeader() {
+  const client = state.mode === "client";
+  document.body.classList.toggle("client", client);
+  document.body.classList.toggle("designer", !client);
+  $("modeBadge").textContent = client ? "Podgląd: tak zobaczy to klient" : "Tryb projektantki";
+  $("modeBtn").textContent = client ? "Wróć do przygotowania" : "Zobacz jako klient";
+  $("stepPrep").hidden = client;
+  $("back1").hidden = client;
+  $("title").textContent = state.prep.client ? `Ankieta: ${state.prep.client}` : "Ankieta wnętrzarska";
+  $("greeting").textContent = state.prep.greeting;
+  $("greeting").hidden = !state.prep.greeting;
+}
+$("modeBtn").addEventListener("click", () => {
+  state.mode = state.mode === "client" ? "designer" : "client";
+  persist(); renderHeader(); renderClientRooms(); go(state.mode === "client" ? 1 : 0);
+});
+const steps = [...document.querySelectorAll("nav.steps button")];
+function go(n) {
+  n = Number(n);
+  if (n === 0 && state.mode === "client") n = 1;
+  document.querySelectorAll("[data-pane]").forEach(p => p.hidden = Number(p.dataset.pane) !== n);
+  steps.forEach(b => b.removeAttribute("aria-current"));
+  steps[n].setAttribute("aria-current", "step");
+  if (n === 2) renderClientRooms();
+  if (n === 3) buildSummary();
+  window.scrollTo({ top: 0 });
+}
+steps.forEach(b => b.addEventListener("click", () => go(b.dataset.step)));
+document.addEventListener("click", e => { const b = e.target.closest("[data-go]"); if (b) go(b.dataset.go); });
+
+/* ---------- Podsumowanie ---------- */
+function collect() {
+  const out = [];
+  if (state.prep.client) out.push(["Klient", [["Ankieta dla", state.prep.client]]]);
+  form.querySelectorAll("[data-section]").forEach(sec => {
+    if (sec.hidden || sec.classList.contains("all-off") || sec.closest("[data-parent][hidden]")) return;
+    const rows = [];
+    if (sec.dataset.section === "Przeznaczenie pomieszczeń") {
+      roomList().forEach((r, i) => {
+        const t = roomName(r);
+        const opis = roomType(r) === "Inne" ? values("funkcja_" + r.id + "_opis")[0] : "";
+        rows.push([`Pomieszczenie ${i + 1}`, (roomType(r) ? t : "nie wybrano") + (opis ? "\n" + opis : "")]);
+      });
+    } else {
+      sec.querySelectorAll("[data-q]").forEach(q => {
+        if (q.closest("[data-parent][hidden]") || q.closest(".q.off")) return;
+        const n = (state.photos[q.dataset.q] || []).length;
+        const a = q.dataset.photos ? (n ? `${n} zdj.` : "") : values(q.dataset.q).join(", ");
+        if (a) rows.push([(q.dataset.ctx ? q.dataset.ctx + " · " : "") + q.dataset.label, a]);
+      });
+    }
+    if (rows.length) out.push([sec.dataset.section, rows]);
+  });
+  const extra = $("uwagi_koncowe").value.trim();
+  if (extra) out.push(["Dodatkowe uwagi", [["Uwagi", extra]]]);
+  return out;
+}
+const PHOTO_LABELS = {};
+function buildSummary() {
+  document.querySelectorAll("[data-photos]").forEach(q => PHOTO_LABELS[q.dataset.label] = q.dataset.q);
+  const box = $("summary");
+  box.replaceChildren();
+  const data = collect();
+  if (!data.length) { box.append(el("p", { class: "empty", text: "Nie ma jeszcze żadnych odpowiedzi." })); return; }
+  data.forEach(([title, rows]) => {
+    const dl = el("dl");
+    rows.forEach(([k, v]) => {
+      const dd = el("dd", { text: v });
+      const pid = PHOTO_LABELS[k];
+      if (pid) dd.append(el("div", { class: "thumbs" }, ...(state.photos[pid] || []).map(src => el("div", { class: "thumb" }, el("img", { src, alt: "" })))));
+      dl.append(el("dt", { text: k }), dd);
+    });
+    box.append(el("section", {}, el("h3", { text: title }), dl));
+  });
+}
+$("uwagi_koncowe").addEventListener("input", buildSummary);
+
+const toast = msg => { const t = $("toast"); t.textContent = msg; setTimeout(() => t.textContent = "", 3500); };
+$("copy").addEventListener("click", () => {
+  const txt = collect().map(([t, rows]) => t.toUpperCase() + "\n" + rows.map(([k, v]) => `- ${k}: ${v}`).join("\n")).join("\n\n");
+  const fb = $("copyFallback");
+  const fallback = () => { fb.hidden = false; fb.value = txt; fb.select(); toast("Tekst jest zaznaczony. Skopiujcie go skrótem Ctrl+C (lub Cmd+C)."); };
+  try { navigator.clipboard.writeText(txt).then(() => toast("Skopiowano odpowiedzi."), fallback); } catch { fallback(); }
+});
+const resetBtn = $("reset");
+resetBtn.addEventListener("click", () => {
+  if (!resetBtn.dataset.armed) {
+    resetBtn.dataset.armed = "1"; resetBtn.textContent = "Na pewno? Kliknij jeszcze raz";
+    setTimeout(() => { delete resetBtn.dataset.armed; resetBtn.textContent = "Wyczyść odpowiedzi"; }, 4000);
+    return;
+  }
+  delete resetBtn.dataset.armed; resetBtn.textContent = "Wyczyść odpowiedzi";
+  form.reset(); state.answers = {}; state.extra = []; state.photos = {}; persist();
+  document.querySelectorAll("[data-photos]").forEach(q => drawThumbs(q.dataset.q));
+  renderClientRooms(); go(1);
+});
+
+/* ---------- Start ---------- */
+(function load() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(KEY) || "null"); } catch {}
+  if (saved && saved.prep) Object.assign(state, saved, { prep: { ...state.prep, ...saved.prep } });
+  if (!Array.isArray(state.prep.offQ)) state.prep.offQ = [];
+  else { state.prep.plan = SAMPLE_PLAN; state.prep.rooms = SAMPLE_ROOMS.map(r => ({ ...r, id: newId() })); }
+  applyValues(form);
+  applyOff();
+  renderPrep(); renderHeader(); renderClientRooms(); refresh();
+  go(state.mode === "client" ? 1 : 0);
+})();
+</script>
