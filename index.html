@@ -109,6 +109,8 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px
 .room-head { display: flex; align-items: center; gap: 10px; }
 .room .q input[type="text"], .room .q input[type="number"], .room .q textarea, .room .chip span { background: var(--bg); }
 .empty { color: var(--muted); font-style: italic; }
+.room-sub { color: var(--accent); font-size: 0.8rem; text-transform: uppercase; letter-spacing: .08em; font-family: var(--font-body); font-weight: 600; padding-top: 6px; border-top: 1px solid var(--line); }
+.room-head + .card-ref + .room-sub, .room-head + .room-sub { border-top: 0; padding-top: 0; }
 
 /* Rzut */
 .plan { position: relative; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #ffffff; max-width: 100%; }
@@ -457,6 +459,7 @@ const PART1 = [
       checks("kto", "Kto?", [
         ["Osoba dorosła pracująca w domu", [
           num("ile", "Ile osób?"),
+          num("stanowiska", "Ile stanowisk pracy przewidzieć?", { hint: "np. dwie osoby mogą dzielić jedno biurko, jeśli pracują o różnych porach" }),
           radio("czestosc", "Jak często?", ["Codziennie", "Kilka dni w tygodniu", "Okazjonalnie"]),
           radio("miejsce", "Czego potrzebuje?", ["Osobnego gabinetu", "Kącika do pracy", "Wystarczy stół"]),
           area("rozne", "Jeśli dorosłych jest kilku i każdy potrzebuje czegoś innego, opiszcie to"),
@@ -489,13 +492,19 @@ const PART1 = [
   { title: "Instalacje", questions: [
     radio("ogrzewanie", "Rodzaj ogrzewania", ["Gazowe", "Pompa ciepła", "Miejskie", "Elektryczne", "Inne / nie wiem"]),
     checks("cieplo", "Jak ciepło trafia do pomieszczeń?", ["Grzejniki", "Ogrzewanie podłogowe", "Kominek"]),
-    radio("klima", "Klimatyzacja", ["Jest", "Planujemy", "Nie"], { when: {
-      "Jest": [text("gdzie_jest", "W których pomieszczeniach jest klimatyzacja?")],
-      "Planujemy": [area("gdzie", "W których pomieszczeniach ją uwzględnić? Gdzie jej nie chcecie?", { hint: "np. w salonie tak, w sypialni nie" })],
+    radio("klima", "Klimatyzacja", ["Jest", "Jest i planujemy ją dołożyć w innych pomieszczeniach", "Planujemy", "Nie ma i nie planujemy"], { when: {
+      "Jest|Jest i planujemy ją dołożyć w innych pomieszczeniach": [text("gdzie_jest", "W których pomieszczeniach już jest?")],
+      "Jest i planujemy ją dołożyć w innych pomieszczeniach|Planujemy": [area("gdzie", "W których pomieszczeniach ją uwzględnić? Gdzie jej nie chcecie?", { hint: "np. w salonie tak, w sypialni nie" })],
     }}),
     radio("rekuperacja", "Rekuperacja (wentylacja z odzyskiem ciepła)", ["Jest", "Planujemy", "Nie", "Nie wiem"]),
-    radio("rolety", "Rolety zewnętrzne", ["Są", "Planujemy", "Nie"]),
+    radio("rolety", "Rolety zewnętrzne", ["Są", "Planujemy", "Nie"], { when: { "Są|Planujemy": [
+      checks("sterowanie", "Jak chcecie sterować roletami?", ["Przyciski na ścianie", "Pilot", "Aplikacja w telefonie lub system inteligentnego domu", "Ręcznie (korba lub taśma)", BP], { hint: "Możecie zaznaczyć kilka", noOther: true }),
+    ]}}),
     radio("smart", "Inteligentny dom (sterowanie światłem, roletami itp.)", ["Tak", "Do rozważenia", "Nie"]),
+    radio("drabinki", "Grzejniki drabinkowe (np. na ręczniki) w łazienkach", ["Tak", "Nie", BP], { when: { "Tak": [
+      radio("rodzaj", "Jakie?", ["Wodne (podłączone do ogrzewania)", "Elektryczne", "Mieszane (wodne z grzałką, można z nich korzystać też latem)", BP]),
+    ]}}),
+    checks("punkty_wodne", "Czy interesują Was dodatkowe punkty wodne?", ["Kran na tarasie lub balkonie", "Kran w ogrodzie", "Przy miskach dla zwierząt", "Prysznic do mycia psa lub łap", "Kran nad płytą kuchenną do napełniania garnków", "Przy stacji robota sprzątającego", "Przyłącze do lodówki z kostkarką lub dystrybutorem wody", "Przyłącze do ekspresu do kawy", "Kran z wodą filtrowaną lub wrzątkiem", "Zlew gospodarczy", "Punkt w garażu", "Nawadnianie roślin"], { hint: "Nie musicie nic zaznaczać. Te punkty trzeba zaplanować przed pracami instalacyjnymi" }),
     radio("alarm", "Alarm lub monitoring", ["Tak", "Nie"]),
     radio("naglosnienie", "Nagłośnienie w domu (np. głośniki w suficie)", ["Tak", "Do rozważenia", "Nie"], { when: { "Tak|Do rozważenia": [
       text("gdzie", "W których pomieszczeniach?"),
@@ -588,8 +597,7 @@ const KITCHEN_APPLIANCES = [
   ["Inne", [area("jakie", "Jakie sprzęty?")]],
 ];
 
-const ROOMS = {
-  "Kuchnia": [
+const KUCHNIA = [
     radio("uklad", "Preferowany układ", ["Jednorzędowa", "W literę L", "W literę U", "Z wyspą", "Z półwyspem", BP]),
     radio("otwarta", "Kuchnia otwarta na salon?", ["Tak", "Nie, osobna", "Częściowo", BP]),
     radio("gotowanie", "Jak często gotujecie?", ["Codziennie", "Kilka razy w tygodniu", "Rzadko"]),
@@ -600,22 +608,35 @@ const ROOMS = {
     checks("zabudowa", "Czy są elementy zabudowy kuchennej, na których szczególnie Wam zależy?", ["Spiżarnia", "Szafka cargo", "Szuflady zamiast drzwiczek", "Otwarte półki", "Zabudowa do sufitu", "Schowany kącik kawowy", "Ukryte miejsce na małe AGD"], { hint: "Nie musicie nic zaznaczać. Zaproponuję rozwiązania dopasowane do kuchni", otherLabel: "Coś jeszcze?" }),
     radio("blat", "Blat", ["Kamień / spiek", "Drewno", "Laminat", "Konglomerat", BP]),
     uwagi(),
-  ],
-  "Salon": [
-    radio("ogladanie", "Na czym chcecie oglądać filmy i telewizję w salonie?", ["Telewizor", "Rzutnik", "Telewizor i rzutnik", "Nie potrzebujemy"], { when: {
-      "Telewizor|Telewizor i rzutnik": [
+];
+const SALON = [
+    radio("ogladanie", "Na czym chcecie oglądać filmy i telewizję w salonie?", ["Telewizor", "Projektor", "Telewizor i projektor", "Nie potrzebujemy"], { when: {
+      "Telewizor|Telewizor i projektor": [
         text("rozmiar", "Wielkość telewizora (cale)"),
         radio("montaz", "Montaż telewizora", ["Na ścianie", "Na szafce", BP]),
         radio("audio", "Soundbar lub kino domowe?", TN),
       ],
-      "Rzutnik|Telewizor i rzutnik": [
-        radio("ekran", "Ekran do rzutnika", ["Zwijany, chowany w suficie", "Stały na ścianie", "Wyświetlanie na ścianie", BP]),
+      "Projektor|Telewizor i projektor": [
+        radio("ekran", "Ekran do projektora", ["Zwijany, chowany w suficie", "Stały na ścianie", "Wyświetlanie na ścianie", BP]),
         radio("zaciemnienie", "Czy potrzebne będzie zaciemnienie okien?", TN),
       ],
     }}),
     num("sofa", "Ile osób ma się zmieścić na sofie?"),
     radio("sofa_typ", "Rodzaj sofy", ["Narożnik", "Prosta sofa", "Sofa i fotele", "Rozkładana do spania", BP]),
     checks("elementy", "Co ma się znaleźć w salonie?", ["Kominek", "Kącik do czytania", "Biblioteczka", "Miejsce do zabawy dla dzieci", "Barek", "Duże rośliny", "Biurko"]),
+    uwagi(),
+];
+const heading = label => ({ type: "heading", label });
+const noUwagi = qs => qs.filter(q => q.id !== "uwagi");
+const ROOMS = {
+  "Kuchnia": KUCHNIA,
+  "Salon": SALON,
+  "Salon z otwartą kuchnią": [
+    heading("Część kuchenna"),
+    ...noUwagi(KUCHNIA).filter(q => q.id !== "otwarta"),
+    radio("oddzielenie", "Czy kuchnię da się zamknąć albo oddzielić?", ["Nie, całkiem otwarta", "Częściowo, np. przesuwnymi drzwiami lub szkłem", BP]),
+    heading("Część wypoczynkowa"),
+    ...noUwagi(SALON),
     uwagi(),
   ],
   "Jadalnia": [
@@ -624,8 +645,23 @@ const ROOMS = {
     radio("stol", "Kształt stołu", ["Prostokątny", "Okrągły", "Owalny", "Rozkładany", BP]),
     uwagi(),
   ],
+  "Sypialnia główna": [
+    radio("lozko", "Szerokość łóżka", ["90 cm", "120 cm", "140 cm", "160 cm", "180 cm", "200 cm"]),
+    radio("lozko_typ", "Rodzaj łóżka", ["Tapicerowane", "Drewniane", "Z pojemnikiem na pościel", BP]),
+    radio("stoliki", "Stoliki nocne", ["Dwa", "Jeden", "Bez stolików"], { when: { "Dwa|Jeden": [
+      num("gniazdka", "Ile gniazdek przy każdym stoliku?"),
+      checks("dodatki", "Przy stoliku przydadzą się też:", ["Ładowarka USB", "Ładowarka bezprzewodowa", "Włącznik światła w całej sypialni"]),
+    ]}}),
+    checks("swiatlo", "Światło do czytania", ["Kinkiety", "Lampki nocne", "Oświetlenie pod łóżkiem", "Niepotrzebne"]),
+    radio("ubrania", "Gdzie ubrania?", ["Szafa w sypialni", "Osobna garderoba", "Garderoba w sypialni"]),
+    radio("zaciemnienie", "Zaciemnienie okien", ["Rolety zaciemniające", "Zasłony zaciemniające (blackout)", "Zaciemnienie potrzebne, rodzaj zostawiam projektantce", "Niepotrzebne"]),
+    checks("inne", "Dodatkowo", ["Telewizor", "Toaletka", "Biurko", "Fotel", "Ławka w nogach łóżka"]),
+    radio("lazienka", "Czy przy sypialni ma być łazienka?", ["Tak", "Nie", "Już jest"]),
+    radio("strefa", "Czy chcecie strefę wypoczynku, np. fotel z lampą do czytania?", ["Tak", "Nie", BP]),
+    uwagi(),
+  ],
   "Sypialnia": [
-    text("dla_kogo", "Dla kogo jest ta sypialnia?", { hint: "np. sypialnia główna, dla babci" }),
+    text("dla_kogo", "Dla kogo jest ta sypialnia?", { hint: "np. dla nastolatka, dla dziadków, dodatkowa" }),
     radio("lozko", "Szerokość łóżka", ["90 cm", "120 cm", "140 cm", "160 cm", "180 cm", "200 cm"]),
     radio("lozko_typ", "Rodzaj łóżka", ["Tapicerowane", "Drewniane", "Z pojemnikiem na pościel", BP]),
     radio("stoliki", "Stoliki nocne", ["Dwa", "Jeden", "Bez stolików"], { when: { "Dwa|Jeden": [
@@ -666,21 +702,18 @@ const ROOMS = {
     ...TOALETA,
     radio("pralka", "Pralka w tej łazience?", TN),
     checks("inne", "Dodatkowo", [
-      ["Grzejnik drabinkowy", [radio("rodzaj", "Jaki grzejnik?", ["Zwykły (wodny, podłączony do ogrzewania)", "Elektryczny", "Mieszany (wodny z grzałką elektryczną, działa też poza sezonem grzewczym)", BP])]],
       "Ogrzewanie podłogowe", "Lustro z oświetleniem", "Szafka na środki czystości",
       ["Miejsce na kosz na brudne pranie", [radio("rodzaj", "Jaki kosz?", ["Wolnostojący", "Schowany w zabudowie", "Z podziałem na kolory (np. białe i kolorowe)", BP])]],
-      "Okno",
     ]),
     radio("sciany", "Ściany", ["Płytki do sufitu", "Płytki tylko przy wodzie", "Mikrocement", BP]),
     uwagi(),
   ],
-  "WC": [
+  "Toaleta": [
     radio("umywalka", "Umywalka", ["Mała umywalka", "Standardowa", BP]),
     ...TOALETA,
     uwagi(),
   ],
   "Gabinet": [
-    num("stanowiska", "Ile stanowisk pracy?"),
     num("monitory", "Ile monitorów na stanowisko?"),
     radio("biurko", "Biurko", ["Zwykłe", "Z regulacją wysokości", BP]),
     radio("wideo", "Czy macie dużo wideorozmów?", ["Tak, ważne ładne tło", "Czasami", "Nie"]),
@@ -716,6 +749,21 @@ const ROOMS = {
     checks("potrzeby", "Czego potrzebujecie?", ["Duży stół roboczy", "Dużo przechowywania", "Dobre światło dzienne", "Wyciszenie", "Zlew"]),
     uwagi(),
   ],
+  "Korytarz": [
+    radio("zabudowa", "Czy chcecie tu szafy albo zabudowę?", ["Tak", "Nie", BP]),
+    checks("oswietlenie", "Oświetlenie", ["Punktowe w suficie", "Kinkiety", "Taśmy LED", "Z czujnikiem ruchu", BP]),
+    radio("galeria", "Czy korytarz ma być miejscem na zdjęcia albo obrazy?", TN),
+    uwagi(),
+  ],
+  "Klatka schodowa": [
+    radio("schody", "Czy schody są do wykończenia albo wymiany?", ["Tak", "Nie, zostają, jakie są"], { when: { "Tak": [
+      radio("stopnie", "Materiał stopni", ["Drewno", "Kamień", "Mikrocement", BP]),
+      radio("balustrada", "Balustrada", ["Szkło", "Metal", "Drewno", BP]),
+    ]}}),
+    checks("oswietlenie", "Oświetlenie", ["LED w stopniach", "Kinkiety", BP]),
+    radio("pod_schodami", "Przestrzeń pod schodami", ["Schowek", "Regał", "Kącik do pracy lub czytania", BP]),
+    uwagi(),
+  ],
   "Spiżarnia": [uwagi("Co chcecie w niej przechowywać?")],
   "Biblioteka": [
     radio("ksiazki", "Ile macie książek?", ["Kilkadziesiąt", "Kilkaset", "Ponad tysiąc"]),
@@ -738,7 +786,7 @@ const ROOMS = {
 };
 const ROOM_TYPES = Object.keys(ROOMS).filter(t => t !== "Inne");
 /* Gdy projektantka nie przygotuje rzutu ani listy, klient zobaczy te pomieszczenia: */
-const DEFAULT_ROOMS = ["Kuchnia", "Salon", "Sypialnia", "Łazienka", "Przedpokój"];
+const DEFAULT_ROOMS = ["Kuchnia", "Salon", "Sypialnia główna", "Łazienka", "Przedpokój"];
 
 /* Przykładowy rzut (do podglądu) */
 const SAMPLE_PLAN = "data:image/svg+xml," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400"><rect width="600" height="400" fill="#fff"/><g fill="none" stroke="#3a3f3c" stroke-width="6"><rect x="6" y="6" width="588" height="388"/><path d="M260 6v214M6 220h254M400 6v388M260 130h140M260 280h140M400 160h194M260 220v174"/></g><g fill="#fff"><rect x="255" y="150" width="10" height="40"/><rect x="300" y="125" width="40" height="10"/><rect x="300" y="275" width="40" height="10"/><rect x="395" y="60" width="10" height="40"/><rect x="395" y="200" width="10" height="40"/><rect x="255" y="240" width="10" height="40"/></g><text x="590" y="390" text-anchor="end" font-family="sans-serif" font-size="12" fill="#8a918c">rzut przykładowy</text></svg>`);
@@ -776,6 +824,7 @@ const el = (tag, attrs = {}, ...kids) => {
 const $ = id => document.getElementById(id);
 
 function renderQ(q, prefix, ctx) {
+  if (q.type === "heading") return el("h3", { class: "room-sub", text: q.label });
   const id = prefix + q.id;
   const wrap = el("div", { class: "q", "data-q": id, "data-label": q.label, "data-key": keyOf(id) });
   if (ctx) wrap.dataset.ctx = ctx;
@@ -1586,6 +1635,15 @@ resetBtn.addEventListener("click", () => {
   else if (!CLIENT_LINK) { state.prep.plan = SAMPLE_PLAN; state.prep.rooms = SAMPLE_ROOMS.map(r => ({ ...r, id: newId() })); }
   if (!Array.isArray(state.prep.offQ)) state.prep.offQ = [];
   if (!Array.isArray(state.notes)) state.notes = [];
+  /* Zmiana nazwy „WC” na „Toaleta” */
+  state.prep.rooms.forEach(r => { if (r.type === "WC") r.type = "Toaleta"; });
+  state.prep.offQ = state.prep.offQ.map(k => k.replace(/^pok_wc_/, "pok_toaleta_"));
+  for (const k of Object.keys(state.answers)) {
+    const v = state.answers[k];
+    if (k.startsWith("funkcja_") && Array.isArray(v)) state.answers[k] = v.map(x => x === "WC" ? "Toaleta" : x);
+    const nk = k.replace(/^(pok_[^_]+_)wc_/, "$1toaleta_");
+    if (nk !== k) { state.answers[nk] = v; delete state.answers[k]; }
+  }
   if (CLIENT_LINK) state.mode = "client";
   applyValues(form);
   applyOff();
