@@ -125,6 +125,14 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
+.ed-wrap { overflow: auto; min-height: 0; display: grid; place-items: start center; }
+.ed-stage { position: relative; display: inline-block; touch-action: none; overflow: hidden; border: 1px solid var(--line); background: #ffffff; max-width: 100%; }
+.ed-canvas { display: block; max-width: 100%; max-height: calc(100vh - 230px); width: auto; height: auto; cursor: crosshair; user-select: none; }
+.ed-sel { position: absolute; border: 2px solid var(--pin); box-shadow: 0 0 0 9999px rgba(0, 0, 0, .35); pointer-events: none; }
+.ed-thumbs { display: flex; gap: 8px; overflow-x: auto; align-items: center; padding-bottom: 4px; }
+.ed-thumb { flex: none; display: grid; gap: 2px; justify-items: center; padding: 4px; border: 2px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); cursor: pointer; font-size: 0.75rem; }
+.ed-thumb canvas { display: block; max-height: 90px; width: auto; background: #ffffff; }
+.ed-thumb[aria-pressed="true"] { border-color: var(--accent); }
 .zoom-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .zoom-bar #zoomClose { margin-left: auto; }
 .zoom-bar #zoomIn, .zoom-bar #zoomOut { min-width: 40px; font-size: 1.1rem; padding-block: 4px; }
@@ -262,13 +270,14 @@ details.type-card .q input[type="text"], details.type-card .q input[type="number
     <section class="group">
       <h3>Rzut mieszkania</h3>
       <div class="btn-row">
-        <label class="btn small file-label">Wgraj rzut (zdjęcie lub skan)
-          <input type="file" id="planFile" accept="image/*">
+        <label class="btn small file-label">Wgraj rzut (PDF, JPG lub PNG)
+          <input type="file" id="planFile" accept="image/*,application/pdf,.pdf">
         </label>
         <button type="button" class="btn small" id="sampleBtn">Wczytaj przykładowy rzut</button>
         <button type="button" class="btn small" id="clearPlanBtn">Usuń rzut i pomieszczenia</button>
       </div>
       <p class="hint" id="planHint">Kliknij na rzucie w miejscu pomieszczenia, żeby dodać numerek. Na liście pod rzutem wybierz, czym jest to pomieszczenie, albo zostaw „Klient wybierze”.</p>
+      <p class="hint" id="planStatus" role="status"></p>
       <div id="prepPlan"></div>
       <div class="rows" id="prepRows"></div>
       <div class="btn-row">
@@ -341,6 +350,18 @@ details.type-card .q input[type="text"], details.type-card .q input[type="number
       <textarea id="copyFallback" hidden readonly></textarea>
     </div>
   </form>
+</div>
+
+<div id="planEditor" class="zoom" role="dialog" aria-modal="true" aria-label="Przygotowanie rzutu" hidden>
+  <div class="zoom-bar">
+    <button type="button" class="btn small" id="edRotate">Obróć o 90°</button>
+    <button type="button" class="btn small" id="edClear" hidden>Usuń zaznaczenie</button>
+    <button type="button" class="btn small" id="edCancel" style="margin-left:auto">Anuluj</button>
+    <button type="button" class="btn small primary" id="edDone">Gotowe</button>
+  </div>
+  <p class="hint" id="edHint">Zaznaczcie myszką (albo palcem) prostokąt wokół samego rzutu, żeby przyciąć resztę. Bez zaznaczenia zostanie cała strona.</p>
+  <div class="ed-thumbs" id="edThumbs" hidden></div>
+  <div class="ed-wrap"><div class="ed-stage" id="edStage"></div></div>
 </div>
 
 <div id="planZoom" class="zoom" role="dialog" aria-modal="true" aria-label="Powiększony rzut mieszkania" hidden>
@@ -1015,11 +1036,155 @@ clearBtn.addEventListener("click", () => {
   delete clearBtn.dataset.armed; clearBtn.textContent = "Usuń rzut i pomieszczenia";
   state.prep.plan = null; state.prep.rooms = []; persist(); renderPrep();
 });
+/* ---------- Przygotowanie rzutu: PDF, wybór strony, kadrowanie, obracanie ---------- */
+const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
+let pdfLibPromise = null;
+function loadPdfJs() {
+  if (!pdfLibPromise) pdfLibPromise = new Promise((resolve, reject) => {
+    const sc = document.createElement("script");
+    sc.src = PDFJS + "pdf.min.js";
+    sc.onload = () => {
+      const lib = window.pdfjsLib;
+      const blob = new Blob([`importScripts("${PDFJS}pdf.worker.min.js");`], { type: "text/javascript" });
+      lib.GlobalWorkerOptions.workerPort = new Worker(URL.createObjectURL(blob));
+      resolve(lib);
+    };
+    sc.onerror = () => { pdfLibPromise = null; reject(new Error("pdfjs")); };
+    document.head.append(sc);
+  });
+  return pdfLibPromise;
+}
+const ed = { src: null, doc: null, page: 1, sel: null };
+const planMsg = msg => { $("planStatus").textContent = msg; };
+function openEditor() {
+  planMsg("");
+  $("planEditor").hidden = false;
+  document.body.style.overflow = "hidden";
+}
+function closeEditor() {
+  $("planEditor").hidden = true;
+  document.body.style.overflow = "";
+  $("edStage").replaceChildren(); $("edThumbs").replaceChildren();
+  if (ed.doc) { ed.doc.destroy(); ed.doc = null; }
+  ed.src = null; ed.sel = null;
+}
+async function renderPdfPage(n, maxSide = 2400) {
+  const page = await ed.doc.getPage(n);
+  const v1 = page.getViewport({ scale: 1 });
+  const vp = page.getViewport({ scale: maxSide / Math.max(v1.width, v1.height) });
+  const c = document.createElement("canvas");
+  c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, c.width, c.height);
+  await page.render({ canvasContext: ctx, viewport: vp }).promise;
+  return c;
+}
+function showSource(canvas) {
+  ed.src = canvas; ed.sel = null;
+  canvas.className = "ed-canvas";
+  const sel = el("div", { class: "ed-sel", hidden: "" });
+  $("edStage").replaceChildren(canvas, sel);
+  $("edClear").hidden = true;
+}
+function drawSel() {
+  const sel = $("edStage").querySelector(".ed-sel");
+  if (!sel) return;
+  const s = ed.sel;
+  sel.hidden = !s;
+  $("edClear").hidden = !s;
+  if (!s) return;
+  const x = Math.min(s.x1, s.x2), y = Math.min(s.y1, s.y2);
+  Object.assign(sel.style, { left: x * 100 + "%", top: y * 100 + "%", width: Math.abs(s.x2 - s.x1) * 100 + "%", height: Math.abs(s.y2 - s.y1) * 100 + "%" });
+}
+(function setupCrop() {
+  const stage = $("edStage");
+  let drawing = false;
+  const pos = ev => {
+    const r = ed.src.getBoundingClientRect();
+    return [Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width)), Math.min(1, Math.max(0, (ev.clientY - r.top) / r.height))];
+  };
+  stage.addEventListener("pointerdown", ev => {
+    if (!ed.src) return;
+    drawing = true; stage.setPointerCapture(ev.pointerId);
+    const [x, y] = pos(ev); ed.sel = { x1: x, y1: y, x2: x, y2: y }; drawSel();
+  });
+  stage.addEventListener("pointermove", ev => { if (!drawing) return; const [x, y] = pos(ev); ed.sel.x2 = x; ed.sel.y2 = y; drawSel(); });
+  stage.addEventListener("pointerup", () => {
+    drawing = false;
+    const s = ed.sel;
+    if (s && (Math.abs(s.x2 - s.x1) < 0.03 || Math.abs(s.y2 - s.y1) < 0.03)) { ed.sel = null; drawSel(); }
+  });
+})();
+$("edClear").addEventListener("click", () => { ed.sel = null; drawSel(); });
+$("edCancel").addEventListener("click", closeEditor);
+$("edRotate").addEventListener("click", () => {
+  if (!ed.src) return;
+  const s = ed.src, c = document.createElement("canvas");
+  c.width = s.height; c.height = s.width;
+  const ctx = c.getContext("2d");
+  ctx.translate(c.width, 0); ctx.rotate(Math.PI / 2); ctx.drawImage(s, 0, 0);
+  showSource(c);
+});
+$("edDone").addEventListener("click", () => {
+  if (!ed.src) return;
+  const s = ed.src, sel = ed.sel;
+  const sx = sel ? Math.min(sel.x1, sel.x2) * s.width : 0, sy = sel ? Math.min(sel.y1, sel.y2) * s.height : 0;
+  const sw = sel ? Math.abs(sel.x2 - sel.x1) * s.width : s.width, sh = sel ? Math.abs(sel.y2 - sel.y1) * s.height : s.height;
+  const scale = Math.min(1, 2000 / Math.max(sw, sh));
+  const out = document.createElement("canvas");
+  out.width = Math.round(sw * scale); out.height = Math.round(sh * scale);
+  const ctx = out.getContext("2d");
+  ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, out.width, out.height);
+  ctx.drawImage(s, sx, sy, sw, sh, 0, 0, out.width, out.height);
+  state.prep.plan = out.toDataURL("image/jpeg", 0.85);
+  state.prep.rooms = state.prep.rooms.filter(r => r.x === null || r.x === undefined);
+  closeEditor();
+  if (!persist()) planMsg("Rzut jest za duży, żeby go zapamiętać w tej przeglądarce. Spróbujcie przyciąć go ciaśniej.");
+  renderPrep();
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("planEditor").hidden) closeEditor(); });
+
 $("planFile").addEventListener("change", async e => {
   const f = e.target.files[0]; e.target.value = ""; if (!f) return;
-  try { state.prep.plan = await shrink(f, 1600, 0.85); } catch { return; }
-  state.prep.rooms = state.prep.rooms.filter(r => r.x === null || r.x === undefined);
-  persist(); renderPrep();
+  const isPdf = f.type === "application/pdf" || /\.pdf$/i.test(f.name);
+  try {
+    if (isPdf) {
+      planMsg("Wczytuję PDF…");
+      const lib = await loadPdfJs();
+      ed.doc = await lib.getDocument({ data: await f.arrayBuffer() }).promise;
+      openEditor();
+      const n = ed.doc.numPages;
+      const thumbs = $("edThumbs");
+      thumbs.hidden = n < 2;
+      showSource(await renderPdfPage(1));
+      if (n > 1) {
+        thumbs.replaceChildren(el("span", { class: "hint", text: "Wybierzcie stronę z rzutem:" }));
+        for (let i = 1; i <= Math.min(n, 30); i++) {
+          const b = el("button", { type: "button", class: "ed-thumb", "aria-pressed": String(i === 1), "aria-label": `Strona ${i}` });
+          b.append(await renderPdfPage(i, 160), el("span", { text: String(i) }));
+          b.addEventListener("click", async () => {
+            thumbs.querySelectorAll(".ed-thumb").forEach(t => t.setAttribute("aria-pressed", String(t === b)));
+            showSource(await renderPdfPage(i));
+          });
+          thumbs.append(b);
+        }
+      }
+    } else {
+      const url = await shrink(f, 3000, 0.92);
+      const img = new Image();
+      await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
+      const c = document.createElement("canvas");
+      c.width = img.width; c.height = img.height;
+      c.getContext("2d").drawImage(img, 0, 0);
+      openEditor();
+      $("edThumbs").hidden = true;
+      showSource(c);
+    }
+    renderPrep();
+  } catch {
+    closeEditor();
+    planMsg("Nie udało się otworzyć pliku. Spróbujcie zapisać rzut jako PDF, JPG albo PNG i wgrać go jeszcze raz.");
+  }
 });
 
 /* Pomieszczenia (klient) */
