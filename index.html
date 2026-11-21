@@ -15,19 +15,21 @@
   --accent-soft: #e2eae4;
   --on-accent: #ffffff;
   --note: #f1ede3;
+  --pin: #b8701c;
+  --on-pin: #ffffff;
   --font-display: "Outfit", "Segoe UI", system-ui, sans-serif;
   --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #151917; --surface: #1d221f; --fg: #e6eae6; --muted: #9ba49e;
-    --line: #333a36; --accent: #8fbaa4; --accent-soft: #24312a; --on-accent: #10201a; --note: #2a2924;
+    --line: #333a36; --accent: #8fbaa4; --accent-soft: #24312a; --on-accent: #10201a; --note: #2a2924; --pin: #e2a24f; --on-pin: #1d1408;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #151917; --surface: #1d221f; --fg: #e6eae6; --muted: #9ba49e;
-  --line: #333a36; --accent: #8fbaa4; --accent-soft: #24312a; --on-accent: #10201a; --note: #2a2924;
+  --line: #333a36; --accent: #8fbaa4; --accent-soft: #24312a; --on-accent: #10201a; --note: #2a2924; --pin: #e2a24f; --on-pin: #1d1408;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -111,7 +113,26 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px
 /* Rzut */
 .plan { position: relative; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #ffffff; max-width: 100%; }
 .plan img { display: block; width: 100%; height: auto; user-select: none; -webkit-user-drag: none; }
-.plan.editable { cursor: crosshair; }
+.plan.editable { cursor: crosshair; outline: 2px dashed var(--pin); outline-offset: -2px; }
+.plan-box { display: grid; gap: 12px; }
+.plan.mini { max-width: 260px; flex: none; }
+.plan.mini .marker { min-width: 20px; height: 20px; padding: 0 4px; border-radius: 10px; font-size: 0.68rem; border-width: 1.5px; box-shadow: none; }
+.marker.dim { background: #c9cfca; color: #4d544f; }
+.plan.mini .marker.dim { min-width: 14px; height: 14px; font-size: 0; padding: 0; }
+.note-pin {
+  position: absolute; transform: translate(-50%, -50%);
+  min-width: 24px; height: 24px; padding: 0 5px; border-radius: 6px;
+  background: var(--pin); color: var(--on-pin); border: 2px solid #ffffff;
+  font: 700 0.75rem var(--font-body); display: grid; place-items: center; box-shadow: 0 1px 3px rgba(0,0,0,.25);
+}
+.plan.mini .note-pin { min-width: 18px; height: 18px; font-size: 0.62rem; border-width: 1.5px; }
+.note-pin.static { position: static; transform: none; display: inline-grid; border: 0; box-shadow: none; vertical-align: middle; }
+.note-row { align-items: flex-start; }
+.card-ref { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+.card-notes { display: grid; gap: 6px; flex: 1 1 200px; min-width: 0; align-content: start; }
+.card-notes p { font-size: 0.92rem; }
+.card-notes .link-btn { justify-self: start; }
+.sum-plan { max-width: 520px; }
 .marker {
   position: absolute; transform: translate(-50%, -50%);
   min-width: 30px; height: 30px; padding: 0 6px; border-radius: 15px;
@@ -261,7 +282,14 @@ details.type-card .q input[type="text"], details.type-card .q input[type="number
         <h2>Pomieszczenia</h2>
         <p class="lead" id="roomsLead">Na rzucie zaznaczone są pomieszczenia. Przy tych z pytajnikiem wybierzcie, do czego mają służyć. Dla każdego pojawi się osobny zestaw pytań.</p>
       </div>
-      <div id="clientPlan"></div>
+      <div id="clientPlanBox" class="plan-box">
+        <div id="clientPlan"></div>
+        <div class="btn-row">
+          <button type="button" class="btn small" id="noteMode">Dodaj notatkę na rzucie</button>
+          <span class="hint" id="noteHint" hidden>Kliknijcie miejsce na rzucie, którego dotyczy notatka, np. tam, gdzie chcecie biurko albo lampę.</span>
+        </div>
+        <div class="rows" id="notesList"></div>
+      </div>
       <section class="group" data-section="Przeznaczenie pomieszczeń" id="assignGroup">
         <h3>Przeznaczenie pomieszczeń</h3>
         <div class="rows" id="clientRows"></div>
@@ -676,7 +704,7 @@ const SAMPLE_ROOMS = [
 const KEY = "ankieta-wnetrzarska-v2";
 let uid = 0;
 const newId = () => "r" + Date.now().toString(36) + (uid++);
-const state = { mode: "designer", prep: { client: "", greeting: "", plan: null, rooms: [], offQ: [] }, extra: [], answers: {}, photos: {} };
+const state = { mode: "designer", prep: { client: "", greeting: "", plan: null, rooms: [], offQ: [] }, extra: [], answers: {}, photos: {}, notes: [] };
 const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); return true; } catch { return false; } };
 
 const slug = s => s.toLowerCase().replace(/ł/g, "l").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
@@ -972,10 +1000,116 @@ function renderTypeCards() {
   }
   applyOff(box);
 }
+/* ---------- Rzut dla klienta: znaczniki, notatki ---------- */
+let noteMode = false;
+const noteLabel = j => String.fromCharCode(65 + (j % 26)) + (j >= 26 ? Math.floor(j / 26) : "");
+function nearestRoom(x, y) {
+  let best = null, bd = Infinity;
+  roomList().forEach(r => {
+    if (r.x === null || r.x === undefined) return;
+    const d = (r.x - x) ** 2 + (r.y - y) ** 2;
+    if (d < bd) { bd = d; best = r; }
+  });
+  return best;
+}
+function roomLabel(r) {
+  const i = roomList().indexOf(r);
+  const nm = roomName(r);
+  return `${i + 1}${nm ? ". " + nm : ""}`;
+}
+function scrollToRoom(r) {
+  const card = $("roomCards").querySelector(`[data-key^="${r.id}|"]`);
+  const target = card || document.querySelector(`[data-room-row="${r.id}"]`);
+  if (target) target.scrollIntoView({ block: "start", behavior: "smooth" });
+}
+function clientPlan({ highlight = null, mini = false, still = false } = {}) {
+  if (!state.prep.plan) return null;
+  const fig = el("div", { class: "plan" + (mini ? " mini" : "") + (!mini && !still && noteMode ? " editable" : "") });
+  const img = el("img", { src: state.prep.plan, alt: "Rzut mieszkania" });
+  fig.append(img);
+  roomList().forEach((r, i) => {
+    if (r.x === null || r.x === undefined) return;
+    const nm = roomName(r);
+    const cls = "marker" + (highlight && r.id !== highlight ? " dim" : "");
+    const attrs = { class: cls, style: `left:${r.x}%;top:${r.y}%`, title: nm || "Do wybrania", text: String(i + 1) + (nm ? "" : "?") };
+    if (mini || still) { fig.append(el("span", { ...attrs, "aria-hidden": "true" })); return; }
+    const m = el("button", { ...attrs, type: "button", "aria-label": `${i + 1}. ${nm || "do wybrania"}` });
+    m.addEventListener("click", ev => { ev.stopPropagation(); if (!noteMode) scrollToRoom(r); });
+    fig.append(m);
+  });
+  state.notes.forEach((n, j) => {
+    const r = nearestRoom(n.x, n.y);
+    if (highlight && (!r || r.id !== highlight)) return;
+    fig.append(el("span", { class: "note-pin", style: `left:${n.x}%;top:${n.y}%`, title: n.text || "Notatka", text: noteLabel(j) }));
+  });
+  if (!mini && !still) {
+    fig.addEventListener("click", ev => {
+      if (!noteMode) return;
+      const rect = img.getBoundingClientRect();
+      const x = Math.round(((ev.clientX - rect.left) / rect.width) * 1000) / 10;
+      const y = Math.round(((ev.clientY - rect.top) / rect.height) * 1000) / 10;
+      state.notes.push({ id: newId(), x, y, text: "" });
+      setNoteMode(false);
+      persist(); renderNotes();
+      const tas = $("notesList").querySelectorAll("textarea");
+      if (tas.length) tas[tas.length - 1].focus();
+    });
+  }
+  return fig;
+}
+function setNoteMode(on) {
+  noteMode = on;
+  $("noteMode").textContent = on ? "Anuluj dodawanie notatki" : "Dodaj notatkę na rzucie";
+  $("noteHint").hidden = !on;
+  const fig = $("clientPlan").querySelector(".plan");
+  if (fig) fig.classList.toggle("editable", on);
+}
+$("noteMode").addEventListener("click", () => setNoteMode(!noteMode));
+function renderNotes() {
+  $("clientPlan").replaceChildren(clientPlan() || "");
+  if (noteMode) setNoteMode(true);
+  const list = $("notesList");
+  list.replaceChildren(...state.notes.map((n, j) => {
+    const r = nearestRoom(n.x, n.y);
+    const ta = el("textarea", { "data-note": n.id, rows: "2", "aria-label": `Notatka ${noteLabel(j)}`, placeholder: "np. tu chcemy biurko pod oknem" });
+    ta.value = n.text;
+    ta.addEventListener("input", () => { n.text = ta.value; persist(); updateCardNotes(); });
+    const del = el("button", { type: "button", class: "icon-btn", "aria-label": `Usuń notatkę ${noteLabel(j)}`, text: "✕" });
+    del.addEventListener("click", () => { state.notes = state.notes.filter(x => x !== n); persist(); renderNotes(); });
+    return el("div", { class: "row note-row" },
+      el("span", { class: "note-pin static", text: noteLabel(j) }),
+      el("div", { class: "grow" }, ta, el("div", { class: "hint", text: r ? "Przy pomieszczeniu " + roomLabel(r) : "" })),
+      del);
+  }));
+  updateCardNotes();
+}
+function updateCardNotes() {
+  roomList().forEach(r => {
+    const card = $("roomCards").querySelector(`[data-key^="${r.id}|"]`);
+    if (!card) return;
+    const ref = card.querySelector(".card-ref");
+    const hasXY = r.x !== null && r.x !== undefined;
+    const mini = hasXY ? clientPlan({ highlight: r.id, mini: true }) : null;
+    const notes = state.notes.map((n, j) => [n, j]).filter(([n]) => { const nr = nearestRoom(n.x, n.y); return nr && nr.id === r.id; });
+    const side = el("div", { class: "card-notes" });
+    if (notes.length) {
+      side.append(el("div", { class: "sub-title", text: "Wasze notatki na rzucie" }));
+      notes.forEach(([n, j]) => side.append(el("p", {}, el("span", { class: "note-pin static", text: noteLabel(j) }), " ", n.text || "(bez treści)")));
+    }
+    if (mini) {
+      const add = el("button", { type: "button", class: "link-btn", text: "Dodaj notatkę na rzucie" });
+      add.addEventListener("click", () => { setNoteMode(true); $("clientPlanBox").scrollIntoView({ block: "start", behavior: "smooth" }); });
+      side.append(add);
+    }
+    ref.replaceChildren(...(mini ? [mini] : []), side);
+    ref.hidden = !mini && !notes.length;
+  });
+}
+
 function renderClientRooms() {
   const designer = state.mode !== "client";
   $("typeCards").hidden = !designer;
-  $("clientPlan").hidden = designer; $("assignGroup").hidden = designer; $("roomCards").hidden = designer;
+  $("clientPlanBox").hidden = designer || !state.prep.plan; $("assignGroup").hidden = designer; $("roomCards").hidden = designer;
   const bpNote = " Jeśli przy jakimś pytaniu nie macie zdania, wybierzcie „Bez preferencji”. Dobiorę rozwiązanie, które najlepiej pasuje do wnętrza.";
   if (designer) {
     $("roomsLead").textContent = "Tu widzisz pytania dla każdego rodzaju pomieszczenia. Rozwiń wybrane i odznacz pytania, których nie chcesz zadawać. Same pomieszczenia ustawiasz w zakładce Przygotowanie.";
@@ -985,7 +1119,7 @@ function renderClientRooms() {
       ? "Na rzucie zaznaczone są pomieszczenia. Przy numerach ze znakiem zapytania wybierzcie, czym ma być dane pomieszczenie. Dla każdego pojawi się osobny zestaw pytań."
       : "Oto lista pomieszczeń. Przy każdym bez przeznaczenia wybierzcie, do czego ma służyć. Dla każdego pojawi się osobny zestaw pytań.") + bpNote;
   }
-  $("clientPlan").replaceChildren(planFigure(false) || "");
+  if (noteMode) setNoteMode(false);
   const rows = $("clientRows");
   rows.replaceChildren();
   roomList().forEach((r, i) => {
@@ -1040,6 +1174,7 @@ function renderRoomCards() {
     if (!card) {
       card = el("section", { class: "room", "data-key": key });
       card.append(el("div", { class: "room-head" }, el("span", { class: "num", text: String(i + 1) }), el("h2", {})));
+      card.append(el("div", { class: "card-ref" }));
       ROOMS[t].forEach(q => card.append(renderQ(q, `pok_${r.id}_${slug(t)}_`, null)));
       applyValues(card);
       applyOff(card);
@@ -1051,6 +1186,7 @@ function renderRoomCards() {
   });
   box.replaceChildren(...keep);
   if (!keep.length) box.append(el("p", { class: "empty", text: "Wybierzcie przeznaczenie pomieszczeń powyżej, a pojawią się pytania." }));
+  renderNotes();
   renderHints();
   refresh();
 }
@@ -1139,6 +1275,13 @@ function collect() {
     }
     if (rows.length) out.push([sec.dataset.section, rows, sec]);
   });
+  const noteRows = [];
+  state.notes.forEach((n, j) => {
+    if (!n.text.trim()) return;
+    const r = nearestRoom(n.x, n.y);
+    noteRows.push([`Notatka ${noteLabel(j)}${r ? " · przy " + roomLabel(r) : ""}`, n.text, $("notesList").querySelector(`[data-note="${n.id}"]`)]);
+  });
+  if (noteRows.length) out.push(["Notatki na rzucie", noteRows, $("clientPlanBox")]);
   const extra = $("uwagi_koncowe").value.trim();
   if (extra) out.push(["Dodatkowe uwagi", [["Uwagi", extra]]]);
   return out;
@@ -1175,7 +1318,8 @@ function buildSummary() {
       });
       head.append(fix);
     }
-    box.append(el("section", {}, head, dl));
+    const planImg = title === "Notatki na rzucie" ? clientPlan({ still: true }) : null;
+    box.append(el("section", {}, head, ...(planImg ? [el("div", { class: "sum-plan" }, planImg)] : []), dl));
   });
 }
 $("uwagi_koncowe").addEventListener("input", buildSummary);
@@ -1195,7 +1339,7 @@ resetBtn.addEventListener("click", () => {
     return;
   }
   delete resetBtn.dataset.armed; resetBtn.textContent = "Wyczyść odpowiedzi";
-  form.reset(); state.answers = {}; state.extra = []; state.photos = {}; persist();
+  form.reset(); state.answers = {}; state.extra = []; state.photos = {}; state.notes = []; persist();
   document.querySelectorAll("[data-photos]").forEach(q => drawThumbs(q.dataset.q));
   renderClientRooms(); go(1);
 });
@@ -1206,6 +1350,7 @@ resetBtn.addEventListener("click", () => {
   try { saved = JSON.parse(localStorage.getItem(KEY) || "null"); } catch {}
   if (saved && saved.prep) Object.assign(state, saved, { prep: { ...state.prep, ...saved.prep } });
   if (!Array.isArray(state.prep.offQ)) state.prep.offQ = [];
+  if (!Array.isArray(state.notes)) state.notes = [];
   else { state.prep.plan = SAMPLE_PLAN; state.prep.rooms = SAMPLE_ROOMS.map(r => ({ ...r, id: newId() })); }
   applyValues(form);
   applyOff();
