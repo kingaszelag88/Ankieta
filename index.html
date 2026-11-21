@@ -328,6 +328,10 @@ details.type-card .q input[type="text"], details.type-card .q input[type="number
         <label class="label" for="uwagi_koncowe">Czy chcecie dodać coś jeszcze?</label>
         <textarea id="uwagi_koncowe" name="uwagi_koncowe" placeholder="Wszystko, o co nie zapytałam, a co jest dla Was ważne"></textarea>
       </div>
+      <div class="note" id="sendNote" hidden>
+        <strong>Jak przekazać odpowiedzi?</strong>
+        <p>Kliknijcie „Kopiuj odpowiedzi” na dole strony i wklejcie je do wiadomości e-mail albo SMS-a do projektantki. Zdjęcia wyślijcie osobno, jako załączniki.</p>
+      </div>
       <div class="summary" id="summary"></div>
       <div class="nav-bottom">
         <button type="button" class="btn" id="reset">Wyczyść odpowiedzi</button>
@@ -730,7 +734,9 @@ const SAMPLE_ROOMS = [
 /* =========================================================
    MECHANIKA (tu zwykle nie trzeba nic zmieniać)
    ========================================================= */
-const KEY = "ankieta-wnetrzarska-v2";
+/* Link dla klienta: adres kończący się na #klient otwiera od razu widok klienta */
+const CLIENT_LINK = location.hash === "#klient";
+const KEY = "ankieta-wnetrzarska-v2" + (CLIENT_LINK ? "-klient" : "");
 let uid = 0;
 const newId = () => "r" + Date.now().toString(36) + (uid++);
 const state = { mode: "designer", prep: { client: "", greeting: "", plan: null, rooms: [], offQ: [] }, extra: [], answers: {}, photos: {}, notes: [] };
@@ -1287,6 +1293,8 @@ function renderHeader() {
   document.body.classList.toggle("client", client);
   document.body.classList.toggle("designer", !client);
   $("modeBadge").textContent = client ? "Podgląd: tak zobaczy to klient" : "Tryb projektantki";
+  $("modeBadge").closest(".top-row").hidden = CLIENT_LINK;
+  $("sendNote").hidden = !CLIENT_LINK;
   $("modeBtn").textContent = client ? "Wróć do przygotowania" : "Zobacz jako klient";
   $("stepPrep").hidden = client;
   $("back1").hidden = client;
@@ -1410,9 +1418,10 @@ resetBtn.addEventListener("click", () => {
   let saved = null;
   try { saved = JSON.parse(localStorage.getItem(KEY) || "null"); } catch {}
   if (saved && saved.prep) Object.assign(state, saved, { prep: { ...state.prep, ...saved.prep } });
+  else if (!CLIENT_LINK) { state.prep.plan = SAMPLE_PLAN; state.prep.rooms = SAMPLE_ROOMS.map(r => ({ ...r, id: newId() })); }
   if (!Array.isArray(state.prep.offQ)) state.prep.offQ = [];
   if (!Array.isArray(state.notes)) state.notes = [];
-  else { state.prep.plan = SAMPLE_PLAN; state.prep.rooms = SAMPLE_ROOMS.map(r => ({ ...r, id: newId() })); }
+  if (CLIENT_LINK) state.mode = "client";
   applyValues(form);
   applyOff();
   renderPrep(); renderHeader(); renderClientRooms(); refresh();
