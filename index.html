@@ -1894,7 +1894,7 @@ function alertBox(where, msg) { where.prepend(el("p", { class: "error", text: ms
 function appBar(...kids) {
   const bar = $("appBar");
   bar.hidden = false;
-  bar.replaceChildren(el("a", { class: "link-btn", href: location.pathname, text: "← Wszystkie ankiety" }), ...kids);
+  bar.replaceChildren(el("a", { class: "link-btn", href: location.pathname, text: "← Wszystkie ankiety" }), ...kids.filter(Boolean));
 }
 
 async function bootEdit() {
