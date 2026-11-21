@@ -115,6 +115,23 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px
 .plan img { display: block; width: 100%; height: auto; user-select: none; -webkit-user-drag: none; }
 .plan.editable { cursor: crosshair; outline: 2px dashed var(--pin); outline-offset: -2px; }
 .plan-box { display: grid; gap: 12px; }
+.plan.interactive:not(.editable), .plan.zoomable { cursor: zoom-in; }
+#planZoom .plan.interactive:not(.editable) { cursor: default; }
+.zoom {
+  position: fixed; inset: 0; z-index: 50; background: var(--bg);
+  display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: 8px;
+  padding-top: max(12px, env(safe-area-inset-top, 0px));
+  padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.zoom-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.zoom-bar #zoomClose { margin-left: auto; }
+.zoom-bar #zoomIn, .zoom-bar #zoomOut { min-width: 40px; font-size: 1.1rem; padding-block: 4px; }
+.zoom-bar .btn:disabled { opacity: .4; cursor: default; }
+.zoom-scroll { overflow: auto; min-height: 0; border: 1px solid var(--line); border-radius: 10px; background: #ffffff; -webkit-overflow-scrolling: touch; }
+.zoom-inner { width: 100%; }
+.zoom-inner .plan { border: 0; border-radius: 0; max-width: none; }
 .plan.mini { max-width: 260px; flex: none; }
 .plan.mini .marker { min-width: 20px; height: 20px; padding: 0 4px; border-radius: 10px; font-size: 0.68rem; border-width: 1.5px; box-shadow: none; }
 .marker.dim { background: #c9cfca; color: #4d544f; }
@@ -286,6 +303,7 @@ details.type-card .q input[type="text"], details.type-card .q input[type="number
         <div id="clientPlan"></div>
         <div class="btn-row">
           <button type="button" class="btn small" id="noteMode">Dodaj notatkę na rzucie</button>
+          <span class="hint" id="zoomTip">Kliknijcie rzut, żeby go powiększyć.</span>
           <span class="hint" id="noteHint" hidden>Kliknijcie miejsce na rzucie, którego dotyczy notatka, np. tam, gdzie chcecie biurko albo lampę.</span>
         </div>
         <div class="rows" id="notesList"></div>
@@ -319,6 +337,17 @@ details.type-card .q input[type="text"], details.type-card .q input[type="number
       <textarea id="copyFallback" hidden readonly></textarea>
     </div>
   </form>
+</div>
+
+<div id="planZoom" class="zoom" role="dialog" aria-modal="true" aria-label="Powiększony rzut mieszkania" hidden>
+  <div class="zoom-bar">
+    <button type="button" class="btn small" id="zoomOut" aria-label="Pomniejsz">−</button>
+    <button type="button" class="btn small" id="zoomIn" aria-label="Powiększ">+</button>
+    <button type="button" class="btn small" id="zoomNote">Dodaj notatkę</button>
+    <button type="button" class="btn small primary" id="zoomClose">Zamknij</button>
+  </div>
+  <p class="hint" id="zoomHint">Przesuwajcie rzut palcem. Kliknijcie numer pomieszczenia, żeby przejść do pytań o nie.</p>
+  <div class="zoom-scroll"><div class="zoom-inner" id="zoomInner"></div></div>
 </div>
 
 <script>
@@ -1024,7 +1053,8 @@ function scrollToRoom(r) {
 }
 function clientPlan({ highlight = null, mini = false, still = false } = {}) {
   if (!state.prep.plan) return null;
-  const fig = el("div", { class: "plan" + (mini ? " mini" : "") + (!mini && !still && noteMode ? " editable" : "") });
+  const interactive = !mini && !still;
+  const fig = el("div", { class: "plan" + (mini ? " mini" : "") + (interactive ? " interactive" : " zoomable") + (interactive && noteMode ? " editable" : "") });
   const img = el("img", { src: state.prep.plan, alt: "Rzut mieszkania" });
   fig.append(img);
   roomList().forEach((r, i) => {
@@ -1034,7 +1064,7 @@ function clientPlan({ highlight = null, mini = false, still = false } = {}) {
     const attrs = { class: cls, style: `left:${r.x}%;top:${r.y}%`, title: nm || "Do wybrania", text: String(i + 1) + (nm ? "" : "?") };
     if (mini || still) { fig.append(el("span", { ...attrs, "aria-hidden": "true" })); return; }
     const m = el("button", { ...attrs, type: "button", "aria-label": `${i + 1}. ${nm || "do wybrania"}` });
-    m.addEventListener("click", ev => { ev.stopPropagation(); if (!noteMode) scrollToRoom(r); });
+    m.addEventListener("click", ev => { if (noteMode) return; ev.stopPropagation(); closeZoom(); scrollToRoom(r); });
     fig.append(m);
   });
   state.notes.forEach((n, j) => {
@@ -1042,14 +1072,16 @@ function clientPlan({ highlight = null, mini = false, still = false } = {}) {
     if (highlight && (!r || r.id !== highlight)) return;
     fig.append(el("span", { class: "note-pin", style: `left:${n.x}%;top:${n.y}%`, title: n.text || "Notatka", text: noteLabel(j) }));
   });
-  if (!mini && !still) {
+  if (!interactive) fig.addEventListener("click", () => openZoom());
+  if (interactive) {
     fig.addEventListener("click", ev => {
-      if (!noteMode) return;
+      if (!noteMode) { if (!fig.closest("#planZoom")) openZoom(); return; }
       const rect = img.getBoundingClientRect();
       const x = Math.round(((ev.clientX - rect.left) / rect.width) * 1000) / 10;
       const y = Math.round(((ev.clientY - rect.top) / rect.height) * 1000) / 10;
       state.notes.push({ id: newId(), x, y, text: "" });
       setNoteMode(false);
+      closeZoom();
       persist(); renderNotes();
       const tas = $("notesList").querySelectorAll("textarea");
       if (tas.length) tas[tas.length - 1].focus();
@@ -1061,9 +1093,38 @@ function setNoteMode(on) {
   noteMode = on;
   $("noteMode").textContent = on ? "Anuluj dodawanie notatki" : "Dodaj notatkę na rzucie";
   $("noteHint").hidden = !on;
-  const fig = $("clientPlan").querySelector(".plan");
-  if (fig) fig.classList.toggle("editable", on);
+  document.querySelectorAll(".plan.interactive").forEach(f => f.classList.toggle("editable", on));
+  $("zoomNote").textContent = on ? "Anuluj notatkę" : "Dodaj notatkę";
+  $("zoomHint").textContent = on ? "Kliknijcie miejsce na rzucie, którego dotyczy notatka." : "Przesuwajcie rzut palcem. Kliknijcie numer pomieszczenia, żeby przejść do pytań o nie.";
+  $("zoomTip").hidden = on;
 }
+/* Powiększanie rzutu */
+let zoom = 1;
+function setZoom(z) {
+  zoom = Math.min(4, Math.max(1, z));
+  $("zoomInner").style.width = (zoom * 100) + "%";
+  $("zoomOut").disabled = zoom <= 1; $("zoomIn").disabled = zoom >= 4;
+}
+function openZoom() {
+  if (!state.prep.plan) return;
+  $("zoomInner").replaceChildren(clientPlan() || "");
+  setZoom(window.innerWidth < 600 ? 2 : 1);
+  $("planZoom").hidden = false;
+  document.body.style.overflow = "hidden";
+  setNoteMode(noteMode);
+  $("zoomClose").focus();
+}
+function closeZoom() {
+  if ($("planZoom").hidden) return;
+  $("planZoom").hidden = true;
+  document.body.style.overflow = "";
+  $("zoomInner").replaceChildren();
+}
+$("zoomIn").addEventListener("click", () => setZoom(zoom + 0.5));
+$("zoomOut").addEventListener("click", () => setZoom(zoom - 0.5));
+$("zoomClose").addEventListener("click", () => { setNoteMode(false); closeZoom(); });
+$("zoomNote").addEventListener("click", () => setNoteMode(!noteMode));
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("planZoom").hidden) { setNoteMode(false); closeZoom(); } });
 $("noteMode").addEventListener("click", () => setNoteMode(!noteMode));
 function renderNotes() {
   $("clientPlan").replaceChildren(clientPlan() || "");
