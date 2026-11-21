@@ -83,6 +83,12 @@ nav.steps button:not([aria-current="step"]):hover { border-color: var(--line); c
   border-radius: 8px; background: var(--surface); font-size: 0.9rem; cursor: pointer;
   transition: background .12s, border-color .12s;
 }
+.chips.described { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.chips.described .chip span { display: grid; gap: 2px; align-content: start; height: 100%; padding: 9px 12px; }
+.chips.described .chip b { font-weight: 600; }
+.chips.described .chip input:checked + span::before { content: none; }
+.chips.described .chip input:checked + span b::before { content: "✓ "; color: var(--accent); }
+.chips.described .chip small { color: var(--muted); font-size: 0.8rem; line-height: 1.35; }
 .chip input:checked + span { background: var(--accent-soft); border-color: var(--accent); }
 .chip input[type="checkbox"]:checked + span::before { content: "✓ "; color: var(--accent); font-weight: 600; }
 .chip input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -389,6 +395,7 @@ const PART1 = [
     ]),
     radio("goscie", "Jak często przyjmujecie gości?", ["Rzadko", "Czasami", "Często"]),
     radio("nocleg", "Czy goście zostają na noc?", ["Tak, potrzebny pokój gościnny", "Czasem, wystarczy rozkładana sofa", "Nie"]),
+    radio("rzeczy", "Ile macie rzeczy do przechowania?", ["Dużo, potrzebujemy sporo schowków", "Przeciętnie", "Niewiele, jesteśmy minimalistami"]),
     radio("sprzatanie", "Jak ważne jest łatwe sprzątanie?", ["Bardzo ważne", "Średnio", "Nie ma znaczenia"]),
     radio("robot", "Robot sprzątający", ["Mamy lub planujemy", "Nie"], { when: { "Mamy lub planujemy": [
       radio("stacja", "Czy zaplanować schowaną stację dokującą?", TN),
@@ -407,14 +414,30 @@ const PART1 = [
     radio("rolety", "Rolety zewnętrzne", ["Są", "Planujemy", "Nie"]),
     radio("smart", "Inteligentny dom (sterowanie światłem, roletami itp.)", ["Tak", "Do rozważenia", "Nie"]),
     radio("alarm", "Alarm lub monitoring", ["Tak", "Nie"]),
+    radio("naglosnienie", "Nagłośnienie w domu (np. głośniki w suficie)", ["Tak", "Do rozważenia", "Nie"], { when: { "Tak|Do rozważenia": [
+      text("gdzie", "W których pomieszczeniach?"),
+    ]}}),
   ]},
   { title: "Styl i oczekiwania", questions: [
-    checks("styl", "Jakie style się Wam podobają?", ["Nowoczesny", "Skandynawski", "Japandi", "Industrialny", "Klasyczny", "Glamour", "Boho", "Minimalistyczny", "Rustykalny", "Nie wiem, potrzebuję pomocy"]),
+    checks("styl", "Jakie style się Wam podobają?", ["Nowoczesny", "Skandynawski", "Japandi", "Industrialny", "Klasyczny", "Glamour", "Boho", "Minimalistyczny", "Rustykalny", "Nie wiem, potrzebuję pomocy"], { hint: "Możecie zaznaczyć kilka. Nie musicie znać nazw: kierujcie się opisami", descs: {
+      "Nowoczesny": "Proste formy, gładkie powierzchnie, stonowane kolory z wyrazistymi akcentami",
+      "Skandynawski": "Jasno i przytulnie: białe ściany, jasne drewno, miękkie tkaniny",
+      "Japandi": "Jasne drewno, spokojne beże, proste formy, mało dekoracji",
+      "Industrialny": "Cegła, beton, czarny metal, surowe wykończenia",
+      "Klasyczny": "Sztukaterie, symetria, szlachetne materiały, ponadczasowe meble",
+      "Glamour": "Połysk, złote dodatki, welur, efektowne lampy",
+      "Boho": "Rattan, rośliny, wzorzyste tkaniny, swobodny klimat",
+      "Minimalistyczny": "Bardzo mało przedmiotów na widoku, ukryte schowki, spokój",
+      "Rustykalny": "Postarzane drewno, kamień, ciepły, wiejski klimat",
+      "Nie wiem, potrzebuję pomocy": "Razem odkryjemy, co Wam się podoba",
+      "Inne": "Opiszcie własnymi słowami",
+    } }),
     area("efekt", "Co chcecie czuć po wejściu do domu?", { hint: "np. spokój, przytulność, dużo światła, porządek" }),
     text("kolory_tak", "Kolory, które lubicie"),
     text("kolory_nie", "Kolory, których nie chcecie"),
     checks("materialy", "Materiały, które lubicie", ["Drewno", "Kamień", "Beton / mikrocement", "Metal", "Szkło", "Len i naturalne tkaniny", "Rattan / wiklina", "Skóra"]),
     checks("podlogi", "Jakie podłogi preferujecie?", ["Deska drewniana", "Panele", "Winyl", "Płytki", "Mikrocement", "Wykładzina"]),
+    checks("oswietlenie", "Jakie oświetlenie lubicie?", ["Lampy dekoracyjne (wiszące, stojące)", "Oświetlenie punktowe w suficie", "Taśmy LED (pod szafkami, we wnękach)", "Kinkiety", "Możliwość ściemniania światła", "Dużo jasnego światła", "Nastrojowe, przytłumione światło"], { hint: "Nie musicie nic zaznaczać. Dobiorę oświetlenie do wnętrza" }),
     radio("swiatlo", "Barwa światła", ["Ciepła, przytulna", "Neutralna", "Zależnie od pomieszczenia", BP]),
     radio("dekoracje", "Ile dekoracji i drobiazgów lubicie?", ["Jak najmniej", "Umiarkowanie", "Dużo, lubimy pamiątki"]),
     area("ekspozycja", "Obrazy, kolekcje lub pamiątki do wyeksponowania"),
@@ -424,6 +447,11 @@ const PART1 = [
     area("wymarzone", "Wymarzone meble lub przedmioty, które chcecie mieć w nowym wnętrzu", { hint: "np. konkretny fotel, stolik, lampa, które już upatrzyliście. Możecie wkleić link albo opisać" }),
     photos("wymarzone_zdjecia", "Zdjęcia wymarzonych mebli i przedmiotów"),
     text("budzet", "Orientacyjny budżet na wykończenie i wyposażenie"),
+  ]},
+  { title: "Priorytety", questions: [
+    area("konieczne", "Co musi się znaleźć w projekcie?", { hint: "Rzeczy, bez których projekt nie będzie dla Was dobry" }),
+    area("mile_widziane", "Co byłoby miło mieć, ale nie jest niezbędne?"),
+    area("niepozadane", "Czego zdecydowanie nie chcecie widzieć we wnętrzu?", { hint: "np. błyszczące fronty, ciemne podłogi, otwarte półki, dywany. Rozwiązania, materiały, meble, kolory" }),
   ]},
 ];
 
@@ -478,6 +506,7 @@ const ROOMS = {
     radio("uklad", "Preferowany układ", ["Jednorzędowa", "W literę L", "W literę U", "Z wyspą", "Z półwyspem", BP]),
     radio("otwarta", "Kuchnia otwarta na salon?", ["Tak", "Nie, osobna", "Częściowo", BP]),
     radio("gotowanie", "Jak często gotujecie?", ["Codziennie", "Kilka razy w tygodniu", "Rzadko"]),
+    radio("pasja", "Gotowanie to dla Was…", ["Pasja", "Codzienna konieczność", "Coś pomiędzy"]),
     num("osoby", "Ile osób gotuje jednocześnie?"),
     radio("sniadania", "Gdzie jecie na co dzień?", ["Przy wyspie lub barze", "Przy stole w kuchni", "W jadalni"]),
     checks("sprzety", "Jakie sprzęty planujecie?", KITCHEN_APPLIANCES, { hint: "Zaznaczcie sprzęt, a pojawią się pytania o szczegóły" }),
@@ -535,6 +564,8 @@ const ROOMS = {
   "Łazienka": [
     radio("ktora", "Jaka to łazienka?", ["Główna", "Przy sypialni", "Dla dzieci", "Dla gości"]),
     radio("umywalki", "Ile umywalek?", ["Jedna", "Dwie"]),
+    radio("umywalka_typ", "Czy macie preferencje dotyczące umywalki?", ["Nablatowa", "Wpuszczana w blat", "Podwieszana, bez szafki", "Z szafką pod spodem", BP]),
+    checks("kosmetyki", "Czy macie preferencje, gdzie trzymać kosmetyki i akcesoria?", ["Szafka pod umywalką", "Szuflady", "Szafka z lustrem", "Wnęka w ścianie", "Otwarte półki"], { hint: "Jeśli nie macie preferencji, pomińcie to pytanie. Zaproponuję najlepsze rozwiązanie" }),
     radio("kapiel", "Prysznic czy wanna?", ["Prysznic", "Wanna", "Prysznic i wanna"], { when: {
       "Prysznic|Prysznic i wanna": [
         radio("forma", "Forma prysznica", ["Walk-in (bez drzwi)", "Kabina z drzwiami", BP]),
@@ -549,7 +580,7 @@ const ROOMS = {
     radio("pralka", "Pralka w tej łazience?", TN),
     checks("inne", "Dodatkowo", [
       ["Grzejnik drabinkowy", [radio("rodzaj", "Jaki grzejnik?", ["Zwykły (wodny, podłączony do ogrzewania)", "Elektryczny", "Mieszany (wodny z grzałką elektryczną, działa też poza sezonem grzewczym)", BP])]],
-      "Ogrzewanie podłogowe", "Lustro z oświetleniem", "Szafka z lustrem", "Szafka na środki czystości",
+      "Ogrzewanie podłogowe", "Lustro z oświetleniem", "Szafka na środki czystości",
       ["Miejsce na kosz na brudne pranie", [radio("rodzaj", "Jaki kosz?", ["Wolnostojący", "Schowany w zabudowie", "Z podziałem na kolory (np. białe i kolorowe)", BP])]],
       "Okno",
     ]),
@@ -599,6 +630,15 @@ const ROOMS = {
     uwagi(),
   ],
   "Spiżarnia": [uwagi("Co chcecie w niej przechowywać?")],
+  "Biblioteka": [
+    radio("ksiazki", "Ile macie książek?", ["Kilkadziesiąt", "Kilkaset", "Ponad tysiąc"]),
+    checks("elementy", "Co ma się tu znaleźć?", ["Fotel do czytania", "Biurko", "Drabinka do wyższych półek", "Zamykane szafki", "Podświetlone półki"]),
+    uwagi(),
+  ],
+  "Schowek / pomieszczenie gospodarcze": [
+    checks("co", "Co chcecie tu przechowywać?", ["Odkurzacz i sprzęt do sprzątania", "Narzędzia", "Walizki", "Sprzęt sportowy", "Zapasy", "Dekoracje sezonowe", "Rowery"]),
+    uwagi(),
+  ],
   "Balkon lub taras": [
     checks("elementy", "Co ma się tu znaleźć?", ["Stół z krzesłami", "Leżaki lub sofa", "Rośliny", "Oświetlenie", "Grill", "Osłona przed słońcem lub sąsiadami"]),
     uwagi(),
@@ -659,7 +699,7 @@ function renderQ(q, prefix, ctx) {
   wrap.append(choice ? el("div", { class: "label", id: labelId, text: q.label }) : el("label", { class: "label", for: id, id: labelId, text: q.label }));
   if (q.hint) wrap.append(el("div", { class: "hint", text: q.hint }));
   if (choice) {
-    const group = el("div", { class: "chips", role: q.type === "radio" ? "radiogroup" : "group", "aria-labelledby": labelId });
+    const group = el("div", { class: "chips" + (q.descs ? " described" : ""), role: q.type === "radio" ? "radiogroup" : "group", "aria-labelledby": labelId });
     const details = [];
     let options = q.options;
     const hasOther = options.some(o => (Array.isArray(o) ? o[0] : o).startsWith("Inne"));
@@ -667,7 +707,8 @@ function renderQ(q, prefix, ctx) {
     options.forEach((opt, i) => {
       const [name, sub] = Array.isArray(opt) ? opt : [opt, null];
       const input = el("input", { type: q.type === "radio" ? "radio" : "checkbox", name: id, value: name, id: id + "__" + i });
-      group.append(el("label", { class: "chip" }, input, el("span", { text: name })));
+      const desc = q.descs && q.descs[name];
+      group.append(el("label", { class: "chip" }, input, desc ? el("span", {}, el("b", { text: name }), el("small", { text: desc })) : el("span", { text: name })));
       if (sub) details.push(subBlock(id, name, sub, id + "_" + slug(name) + "_", name));
     });
     wrap.append(group, ...details);
