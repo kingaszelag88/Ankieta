@@ -400,6 +400,7 @@ const PART1 = [
     radio("robot", "Robot sprzątający", ["Mamy lub planujemy", "Nie"], { when: { "Mamy lub planujemy": [
       radio("stacja", "Czy zaplanować schowaną stację dokującą?", TN),
     ]}}),
+    area("nawyki", "Jakie Wasze codzienne nawyki powinny znaleźć odzwierciedlenie we wnętrzu?", { hint: "np. czytanie w łóżku, poranna kawa przy oknie, ćwiczenia rano, odkładanie kluczy przy wejściu" }),
     area("przeszkadza", "Co przeszkadza Wam w obecnym mieszkaniu?"),
     area("lubicie", "Co lubicie w obecnym mieszkaniu i chcecie zachować?"),
   ]},
@@ -436,6 +437,8 @@ const PART1 = [
     text("kolory_tak", "Kolory, które lubicie"),
     text("kolory_nie", "Kolory, których nie chcecie"),
     checks("materialy", "Materiały, które lubicie", ["Drewno", "Kamień", "Beton / mikrocement", "Metal", "Szkło", "Len i naturalne tkaniny", "Rattan / wiklina", "Skóra"]),
+    checks("wykonczenia", "Jakie wykończenia i faktury lubicie?", ["Matowe", "Satynowe", "Błyszczące", "Gładkie", "Z wyraźną strukturą drewna", "Szorstkie, naturalne (np. kamień, len)"], { hint: "Nie musicie nic zaznaczać" }),
+    radio("rosliny", "Czy chcecie mieć dużo roślin we wnętrzu?", ["Tak, dużo", "Kilka", "Nie", BP]),
     checks("podlogi", "Jakie podłogi preferujecie?", ["Deska drewniana", "Panele", "Winyl", "Płytki", "Mikrocement", "Wykładzina"]),
     checks("oswietlenie", "Jakie oświetlenie lubicie?", ["Lampy dekoracyjne (wiszące, stojące)", "Oświetlenie punktowe w suficie", "Taśmy LED (pod szafkami, we wnękach)", "Kinkiety", "Możliwość ściemniania światła", "Dużo jasnego światła", "Nastrojowe, przytłumione światło"], { hint: "Nie musicie nic zaznaczać. Dobiorę oświetlenie do wnętrza" }),
     radio("swiatlo", "Barwa światła", ["Ciepła, przytulna", "Neutralna", "Zależnie od pomieszczenia", BP]),
@@ -458,6 +461,7 @@ const PART1 = [
 /* Część 2: pomieszczenia. Klucz = nazwa przeznaczenia. */
 const KITCHEN_APPLIANCES = [
   ["Lodówka", [
+    radio("wielkosc", "Wielkość lodówki", ["Mała (pod blatem)", "Standardowa (szer. ok. 60 cm)", "Duża (szer. 70–90 cm lub side by side)", BP]),
     checks("cechy", "Jaka lodówka?", ["Wolnostojąca", "W zabudowie", "Side by side", "Z kostkarką", "Z dystrybutorem wody", "Z szufladą świeżości", "Osobna zamrażarka"]),
     uwagi(),
   ]],
@@ -474,6 +478,7 @@ const KITCHEN_APPLIANCES = [
   ["Płyta grzewcza", [
     radio("rodzaj", "Rodzaj", ["Indukcyjna", "Gazowa", "Elektryczna (bez indukcji)", "Mieszana (gaz i indukcja)", "Nie wiem, proszę o doradzenie"]),
     radio("szer", "Szerokość", ["60 cm", "70–80 cm", "90 cm i więcej", BP]),
+    radio("pola", "Liczba pól grzewczych", ["2", "3", "4", "5 lub więcej", BP]),
     uwagi(),
   ]],
   ["Okap", [
