@@ -2217,12 +2217,28 @@ async function showPanel() {
       el("a", { class: "btn small", href: `?edytuj=${row.id}`, text: "Przygotuj / edytuj" }),
       copy,
       row.status !== "nowa" ? el("a", { class: "btn small primary", href: `?odpowiedzi=${row.id}`, text: "Odpowiedzi klienta" }) : null,
+      row.status !== "nowa" ? clearButton(row.id, error => { if (error) info.textContent = "Nie udało się wyczyścić odpowiedzi. Czy uruchomiłaś migrację bazy (migracja-3-czyszczenie.sql)?"; else showPanel(); }) : null,
       del);
     return el("div", { class: "survey-item" },
       el("div", { class: "survey-top" }, el("h2", { text: name }), el("span", { class: "pill " + row.status, text: STATUS[row.status] || row.status })),
       el("p", { class: "survey-meta", text: meta.join(" · ") }),
       actions, info);
   }));
+}
+function clearButton(surveyId, onDone, small = true) {
+  const b = el("button", { type: "button", class: "btn" + (small ? " small" : ""), text: "Wyczyść odpowiedzi klienta" });
+  b.addEventListener("click", async () => {
+    if (!b.dataset.armed) {
+      b.dataset.armed = "1"; b.textContent = "Na pewno? Odpowiedzi i zdjęcia klienta znikną";
+      setTimeout(() => { delete b.dataset.armed; b.textContent = "Wyczyść odpowiedzi klienta"; }, 5000);
+      return;
+    }
+    b.disabled = true;
+    const { error } = await sb.rpc("clear_responses", { p_survey_id: surveyId });
+    b.disabled = false; delete b.dataset.armed; b.textContent = "Wyczyść odpowiedzi klienta";
+    onDone(error);
+  });
+  return b;
 }
 function alertBox(where, msg) { where.prepend(el("p", { class: "error", text: msg })); }
 
@@ -2319,7 +2335,11 @@ async function bootView() {
   document.body.classList.add("readonly");
   const printBtn = el("button", { type: "button", class: "btn small primary", text: "Drukuj / zapisz jako PDF" });
   printBtn.addEventListener("click", () => { go(3); setTimeout(() => window.print(), 100); });
-  appBar(el("div", { class: "grow-gap" }, el("a", { class: "btn small", href: `?edytuj=${sv.id}`, text: "Edytuj ankietę" }), printBtn));
+  const clr = clearButton(sv.id, error => {
+    if (error) { $("lead").textContent = "Nie udało się wyczyścić odpowiedzi. Spróbuj ponownie."; return; }
+    location.href = `?edytuj=${sv.id}`;
+  });
+  appBar(el("div", { class: "grow-gap" }, el("a", { class: "btn small", href: `?edytuj=${sv.id}`, text: "Edytuj ankietę" }), clr, printBtn));
   startUI(3);
   $("lead").textContent = `Odpowiedzi klienta. Status: ${STATUS[sv.status] || sv.status}` + (sv.submitted_at ? `, wysłana ${fmtDate(sv.submitted_at)}` : resp ? `, ostatnia zmiana ${fmtDate(resp.updated_at)}` : "") + ".";
   $("greeting").hidden = true;
@@ -2350,9 +2370,9 @@ function notifyDesigner() {
   try {
     const body = new URLSearchParams({
       "form-name": "wyslana-ankieta",
-      klient: state.prep.client || "Klient bez nazwy",
-      wyslano: new Date().toLocaleString("pl-PL"),
-      panel: `${location.origin}${location.pathname}`,
+      "Klient": state.prep.client || "Klient bez nazwy",
+      "Wysłano": new Date().toLocaleString("pl-PL"),
+      "Panel": `${location.origin}${location.pathname}`,
     });
     fetch(location.pathname, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: body.toString() }).catch(() => {});
   } catch {}

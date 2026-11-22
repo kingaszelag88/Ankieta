@@ -10,6 +10,6 @@ mkdir -p dist
   printf '</head>\n<body>\n'
   cat index.html
   printf '\n<form name="wyslana-ankieta" method="POST" data-netlify="true" netlify-honeypot="bot-field" hidden>\n'
-  printf '<input name="klient"><input name="wyslano"><input name="panel"><input name="bot-field">\n</form>\n'
+  printf '<input name="Klient"><input name="Wysłano"><input name="Panel"><input name="bot-field">\n</form>\n'
   printf '\n</body>\n</html>\n'
 } > dist/index.html
