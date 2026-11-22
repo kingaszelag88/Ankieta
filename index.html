@@ -2345,6 +2345,18 @@ async function bootClient() {
       : "Możecie przerwać w dowolnym momencie i wrócić później przez ten sam link. Kiedy skończycie, kliknijcie „Wyślij do projektantki” na dole strony." }));
   startUI();
 }
+/* Powiadomienie projektantki e-mailem (formularz Netlify z powiadomieniem) */
+function notifyDesigner() {
+  try {
+    const body = new URLSearchParams({
+      "form-name": "wyslana-ankieta",
+      klient: state.prep.client || "Klient bez nazwy",
+      wyslano: new Date().toLocaleString("pl-PL"),
+      panel: `${location.origin}${location.pathname}`,
+    });
+    fetch(location.pathname, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: body.toString() }).catch(() => {});
+  } catch {}
+}
 $("submitBtn").addEventListener("click", async () => {
   const btn = $("submitBtn");
   btn.disabled = true; btn.textContent = "Wysyłam…";
@@ -2353,6 +2365,7 @@ $("submitBtn").addEventListener("click", async () => {
   btn.disabled = false; btn.textContent = "Wyślij do projektantki";
   if (error) { toast("Nie udało się wysłać. Sprawdźcie połączenie z internetem i spróbujcie ponownie."); return; }
   submitted = true;
+  notifyDesigner();
   $("sendNote").replaceChildren(el("div", { class: "thanks" },
     el("strong", { text: "Dziękuję! Ankieta została wysłana." }),
     el("p", { text: "Odezwę się wkrótce. Jeśli coś Wam się jeszcze przypomni, możecie poprawić odpowiedzi i wysłać ankietę ponownie." })));

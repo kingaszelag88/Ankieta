@@ -9,5 +9,7 @@ mkdir -p dist
   printf '<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font-size:14px}img{max-width:100%%}[hidden]{display:none!important}</style>\n'
   printf '</head>\n<body>\n'
   cat index.html
+  printf '\n<form name="wyslana-ankieta" method="POST" data-netlify="true" netlify-honeypot="bot-field" hidden>\n'
+  printf '<input name="klient"><input name="wyslano"><input name="panel"><input name="bot-field">\n</form>\n'
   printf '\n</body>\n</html>\n'
 } > dist/index.html
