@@ -2004,6 +2004,34 @@ async function showPanel() {
     chooser.hidden = false;
   });
   outBtn.addEventListener("click", async () => { await sb.auth.signOut(); location.href = location.pathname; });
+  const pwBtn = el("button", { type: "button", class: "btn", text: "Zmień hasło" });
+  const pwBox = el("div", { class: "q-form", hidden: "" });
+  pwBtn.addEventListener("click", () => {
+    const p1 = el("input", { type: "password", id: "pw1", autocomplete: "new-password" });
+    const p2 = el("input", { type: "password", id: "pw2", autocomplete: "new-password" });
+    const msg = el("p", { class: "error", role: "alert" });
+    const save = el("button", { type: "button", class: "btn small primary", text: "Zapisz nowe hasło" });
+    const cancel = el("button", { type: "button", class: "btn small", text: "Anuluj" });
+    cancel.addEventListener("click", () => { pwBox.hidden = true; });
+    save.addEventListener("click", async () => {
+      msg.className = "error";
+      if (p1.value.length < 8) { msg.textContent = "Hasło musi mieć co najmniej 8 znaków."; return; }
+      if (p1.value !== p2.value) { msg.textContent = "Hasła nie są takie same. Wpisz je jeszcze raz."; return; }
+      save.disabled = true;
+      const { error } = await sb.auth.updateUser({ password: p1.value });
+      save.disabled = false;
+      if (error) { msg.textContent = "Nie udało się zmienić hasła. Spróbuj inne hasło albo zaloguj się ponownie."; return; }
+      msg.className = "hint";
+      msg.textContent = "Hasło zmienione. Od teraz loguj się nowym hasłem.";
+      p1.value = ""; p2.value = "";
+    });
+    pwBox.replaceChildren(el("strong", { text: "Zmiana hasła" }),
+      el("div", { class: "q" }, el("label", { class: "label", for: "pw1", text: "Nowe hasło (co najmniej 8 znaków)" }), p1),
+      el("div", { class: "q" }, el("label", { class: "label", for: "pw2", text: "Powtórz nowe hasło" }), p2),
+      msg, el("div", { class: "btn-row" }, save, cancel));
+    pwBox.hidden = false;
+    p1.focus();
+  });
   const tplList = el("div", { class: "survey-list" });
   const newTpl = el("button", { type: "button", class: "btn small", text: "+ Nowy wzór" });
   newTpl.addEventListener("click", async () => {
@@ -2013,8 +2041,8 @@ async function showPanel() {
     location.href = `?wzor=${data.id}`;
   });
   showPanelView(
-    el("div", { class: "panel-head" }, el("h1", { text: "Twoje ankiety" }), el("div", { class: "btn-row" }, newBtn, outBtn)),
-    chooser, list,
+    el("div", { class: "panel-head" }, el("h1", { text: "Twoje ankiety" }), el("div", { class: "btn-row" }, newBtn, pwBtn, outBtn)),
+    pwBox, chooser, list,
     el("div", { class: "panel-head" }, el("h2", { text: "Moje wzory" }), newTpl),
     el("p", { class: "hint", text: "Wzór to gotowy zestaw pytań, np. dla domu, mieszkania albo jednego pokoju. Przy tworzeniu nowej ankiety wybierasz wzór, a potem możesz go jeszcze dopasować do klienta." }),
     tplList);
