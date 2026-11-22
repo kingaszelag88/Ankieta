@@ -16,6 +16,7 @@
   --on-accent: #ffffff;
   --note: #f1ede3;
   --pin: #b8701c;
+  --todo: #c8453b;
   --on-pin: #ffffff;
   --font-display: "Outfit", "Segoe UI", system-ui, sans-serif;
   --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
@@ -23,13 +24,13 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #151917; --surface: #1d221f; --fg: #e6eae6; --muted: #9ba49e;
-    --line: #333a36; --accent: #8fbaa4; --accent-soft: #24312a; --on-accent: #10201a; --note: #2a2924; --pin: #e2a24f; --on-pin: #1d1408;
+    --line: #333a36; --accent: #8fbaa4; --accent-soft: #24312a; --on-accent: #10201a; --note: #2a2924; --pin: #e2a24f; --on-pin: #1d1408; --todo: #d9584e;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #151917; --surface: #1d221f; --fg: #e6eae6; --muted: #9ba49e;
-  --line: #333a36; --accent: #8fbaa4; --accent-soft: #24312a; --on-accent: #10201a; --note: #2a2924; --pin: #e2a24f; --on-pin: #1d1408;
+  --line: #333a36; --accent: #8fbaa4; --accent-soft: #24312a; --on-accent: #10201a; --note: #2a2924; --pin: #e2a24f; --on-pin: #1d1408; --todo: #d9584e;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -130,6 +131,14 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px
 .ed-wrap { overflow: auto; min-height: 0; display: grid; place-items: start center; }
 .ed-stage { position: relative; display: inline-block; touch-action: none; overflow: hidden; border: 1px solid var(--line); background: #ffffff; max-width: 100%; }
 .ed-canvas { display: block; max-width: 100%; max-height: calc(100vh - 230px); width: auto; height: auto; cursor: crosshair; user-select: none; }
+.angle-box { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.angle-box input[type="range"] { width: 160px; accent-color: var(--accent); }
+.angle-box input[type="number"] { width: 4.5rem; padding: 4px 6px; }
+#edGrid[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+.ed-grid { position: absolute; inset: 0; pointer-events: none; display: none;
+  background-image: linear-gradient(rgba(200, 69, 59, .35) 1px, transparent 1px), linear-gradient(90deg, rgba(200, 69, 59, .35) 1px, transparent 1px);
+  background-size: 40px 40px; }
+.ed-stage.grid .ed-grid { display: block; }
 .ed-sel { position: absolute; border: 2px solid var(--pin); box-shadow: 0 0 0 9999px rgba(0, 0, 0, .35); pointer-events: none; }
 .ed-thumbs { display: flex; gap: 8px; overflow-x: auto; align-items: center; padding-bottom: 4px; }
 .ed-thumb { flex: none; display: grid; gap: 2px; justify-items: center; padding: 4px; border: 2px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); cursor: pointer; font-size: 0.75rem; }
@@ -174,6 +183,12 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px
   display: inline-grid; place-items: center;
 }
 .num.ghost { background: var(--accent-soft); color: var(--accent); }
+.marker.todo, .num.todo { background: var(--todo); color: #ffffff; }
+.legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; color: var(--muted); font-size: 0.82rem; }
+.legend .dot { width: 12px; height: 12px; border-radius: 6px; background: var(--accent); display: inline-block; margin-left: 6px; }
+.legend .dot:first-child { margin-left: 0; }
+.legend .dot.todo { background: var(--todo); }
+.legend .dot.pin { background: var(--pin); border-radius: 3px; }
 .rows { display: grid; gap: 10px; }
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
 .row > .grow { flex: 1 1 180px; min-width: 0; }
@@ -365,6 +380,7 @@ body.readonly #form .file-label, body.readonly #form .thumb-del, body.readonly #
           <span class="hint" id="zoomTip">Kliknijcie rzut, żeby go powiększyć.</span>
           <span class="hint" id="noteHint" hidden>Kliknijcie miejsce na rzucie, którego dotyczy notatka, np. tam, gdzie chcecie biurko albo lampę.</span>
         </div>
+        <p class="legend" id="planLegend"><span class="dot todo"></span> do wybrania przez Was <span class="dot"></span> ustalone <span class="dot pin"></span> Wasze notatki</p>
         <div class="rows" id="notesList"></div>
       </div>
       <section class="group" data-section="Przeznaczenie pomieszczeń" id="assignGroup">
@@ -406,6 +422,14 @@ body.readonly #form .file-label, body.readonly #form .thumb-del, body.readonly #
 <div id="planEditor" class="zoom" role="dialog" aria-modal="true" aria-label="Przygotowanie rzutu" hidden>
   <div class="zoom-bar">
     <button type="button" class="btn small" id="edRotate">Obróć o 90°</button>
+    <span class="angle-box">
+      <label for="edAngle" class="hint">Kąt</label>
+      <button type="button" class="tool-btn" id="edMinus" aria-label="Obróć o −1°">−1°</button>
+      <input type="range" id="edAngle" min="-180" max="180" step="0.5" value="0">
+      <button type="button" class="tool-btn" id="edPlus" aria-label="Obróć o +1°">+1°</button>
+      <input type="number" id="edAngleNum" min="-180" max="180" step="0.5" value="0" aria-label="Kąt obrotu w stopniach">°
+    </span>
+    <button type="button" class="btn small" id="edGrid" aria-pressed="false">Siatka</button>
     <button type="button" class="btn small" id="edClear" hidden>Usuń zaznaczenie</button>
     <button type="button" class="btn small" id="edCancel" style="margin-left:auto">Anuluj</button>
     <button type="button" class="btn small primary" id="edDone">Gotowe</button>
@@ -654,7 +678,7 @@ const KUCHNIA = [
     num("osoby", "Ile osób gotuje jednocześnie?"),
     radio("sniadania", "Gdzie jecie na co dzień?", ["Przy wyspie lub barze", "Przy stole w kuchni", "W jadalni"]),
     checks("sprzety", "Jakie sprzęty planujecie?", KITCHEN_APPLIANCES, { hint: "Zaznaczcie sprzęt, a pojawią się pytania o szczegóły" }),
-    checks("zabudowa", "Czy są elementy zabudowy kuchennej, na których szczególnie Wam zależy?", ["Spiżarnia", "Szafka cargo", "Szuflady zamiast drzwiczek", "Otwarte półki", "Zabudowa do sufitu", "Schowany kącik kawowy", "Ukryte miejsce na małe AGD"], { hint: "Nie musicie nic zaznaczać. Zaproponuję rozwiązania dopasowane do kuchni", otherLabel: "Coś jeszcze?" }),
+    checks("zabudowa", "Czy są elementy zabudowy kuchennej, na których szczególnie Wam zależy?", ["Spiżarnia", "Szafka cargo", "Szuflady zamiast drzwiczek", "Otwarte półki", "Zabudowa do sufitu", "Wyspa", "Bar kuchenny", "Schowany kącik kawowy", "Ukryte miejsce na małe AGD"], { hint: "Nie musicie nic zaznaczać. Zaproponuję rozwiązania dopasowane do kuchni", otherLabel: "Coś jeszcze?" }),
     radio("blat", "Blat", ["Kamień / spiek", "Drewno", "Laminat", "Konglomerat", BP]),
     uwagi(),
 ];
@@ -833,6 +857,44 @@ const ROOMS = {
     uwagi(),
   ],
 };
+/* Pytania wspólne dla kilku pomieszczeń */
+const STOL = () => [
+  num("codziennie", "Ile miejsc przy stole na co dzień?"),
+  num("swieta", "A ile przy okazjach (święta, goście)?"),
+  radio("stol", "Kształt stołu", ["Prostokątny", "Okrągły", "Owalny", "Rozkładany", BP]),
+];
+const STOL_TU = () => radio("stol_tu", "Czy w tym pomieszczeniu ma stać stół do jedzenia?", TN, { when: { "Tak": STOL() } });
+const PRALKA = () => radio("pralka", "Pralka w tym pomieszczeniu?", TN, { when: { "Tak": [
+  radio("suszarka", "Czy będzie też suszarka?", ["Tak, osobna suszarka", "Pralko-suszarka (jedno urządzenie)", "Nie"], { when: { "Tak, osobna suszarka": [
+    radio("ustawienie", "Jak ustawić pralkę i suszarkę?", ["W słupku jedna na drugiej", "Obok siebie", "Na podwyższeniu", BP]),
+  ]}}),
+  radio("zabudowa", "Czy pralka ma być schowana w zabudowie?", ["Tak", "Nie", BP]),
+]}});
+/* Pokazywane tylko klientom, którzy w części 1 zaznaczyli kota albo gryzonie */
+const KUWETA = () => radio("kuweta", "Czy w tym pomieszczeniu ma być miejsce na kuwetę?", TN, {
+  showIf: { field: "zwierzeta_rodzaj", when: "Kot|Gryzonie", note: "Widoczne tylko dla klientów z kotem lub gryzoniami" },
+  when: { "Tak": [radio("jak", "Jak ją ustawić?", ["Schowana w zabudowie (szafka z otworem)", "Na widoku", BP])] },
+});
+const beforeUwagi = (type, ...qs) => {
+  const list = ROOMS[type];
+  const i = list.findIndex(q => q.id === "uwagi");
+  list.splice(i < 0 ? list.length : i, 0, ...qs);
+};
+beforeUwagi("Kuchnia", STOL_TU());
+beforeUwagi("Salon", STOL_TU());
+(() => {
+  const list = ROOMS["Salon z otwartą kuchnią"];
+  const i = list.findIndex(q => q.type === "heading" && q.label === "Część wypoczynkowa");
+  list.splice(i, 0, heading("Część jadalniana"), STOL_TU());
+})();
+(() => {
+  const list = ROOMS["Łazienka"];
+  list[list.findIndex(q => q.id === "pralka")] = PRALKA();
+})();
+beforeUwagi("Toaleta", PRALKA());
+beforeUwagi("Garderoba", PRALKA());
+["Toaleta", "Łazienka", "Pralnia", "Przedpokój", "Korytarz", "Garderoba", "Schowek / pomieszczenie gospodarcze", "Klatka schodowa"].forEach(t => beforeUwagi(t, KUWETA()));
+
 const ROOM_TYPES = Object.keys(ROOMS).filter(t => t !== "Inne");
 /* Gdy projektantka nie przygotuje rzutu ani listy, klient zobaczy te pomieszczenia: */
 const DEFAULT_ROOMS = ["Kuchnia", "Salon", "Sypialnia główna", "Łazienka", "Przedpokój"];
@@ -988,6 +1050,10 @@ function renderQ(q, prefix, ctx, secKey) {
     wrap.append(el("input", { type: q.type === "num" ? "number" : "text", id, name: id, min: q.type === "num" ? "0" : null, inputmode: q.type === "num" ? "numeric" : null }));
   }
   if (q.when) for (const [when, qs] of Object.entries(q.when)) wrap.append(subBlock(id, when, qs, id + "_", null));
+  if (q.showIf) {
+    wrap.querySelector(":scope > .q-tools").append(el("span", { class: "custom-tag", text: q.showIf.note }));
+    return el("div", { class: "cond", "data-parent": q.showIf.field, "data-when": q.showIf.when }, wrap);
+  }
   return wrap;
 }
 function subBlock(parent, when, qs, prefix, title) {
@@ -1173,6 +1239,7 @@ function rerenderStructure(focusId) {
 /* ---------- Wartości formularza ---------- */
 function values(name) {
   return [...form.querySelectorAll(`[name="${CSS.escape(name)}"]`)]
+    .filter(i => !i.closest("[data-parent][hidden]"))
     .filter(i => (i.type === "radio" || i.type === "checkbox") ? i.checked : i.value.trim() !== "")
     .map(i => i.value.trim());
 }
@@ -1219,7 +1286,7 @@ function planFigure(editable) {
   rooms.forEach((r, i) => {
     if (r.x === null || r.x === undefined) return;
     const nm = editable ? fixedName(r) : roomName(r);
-    const m = el("button", { type: "button", class: "marker", style: `left:${r.x}%;top:${r.y}%`, title: nm || "Do wyboru przez klienta", "aria-label": `${i + 1}. ${nm || "do wyboru"}`, text: String(i + 1) + (nm ? "" : "?") });
+    const m = el("button", { type: "button", class: "marker" + (nm ? "" : " todo"), style: `left:${r.x}%;top:${r.y}%`, title: nm || "Do wyboru przez klienta", "aria-label": `${i + 1}. ${nm || "do wyboru"}`, text: String(i + 1) + (nm ? "" : "?") });
     m.addEventListener("click", ev => {
       ev.stopPropagation();
       const target = document.querySelector(`[data-room-row="${r.id}"]`);
@@ -1274,7 +1341,7 @@ function renderPrep() {
     const del = el("button", { type: "button", class: "icon-btn", "aria-label": `Usuń pomieszczenie ${i + 1}`, text: "✕" });
     del.addEventListener("click", () => { state.prep.rooms.splice(i, 1); persist(); renderPrep(); });
     rows.append(el("div", { class: "row", "data-room-row": r.id },
-      el("span", { class: "num" + (r.x === null || r.x === undefined ? " ghost" : ""), text: String(i + 1) }),
+      el("span", { class: "num" + (r.x === null || r.x === undefined ? " ghost" : "") + (r.type ? "" : " todo"), text: String(i + 1) }),
       el("div", { class: "grow" }, sel), del,
       name ? el("div", { class: "sub" }, name) : null));
   });
@@ -1319,7 +1386,7 @@ function loadPdfJs() {
   });
   return pdfLibPromise;
 }
-const ed = { src: null, doc: null, page: 1, sel: null };
+const ed = { src: null, base: null, angle: 0, doc: null, page: 1, sel: null };
 const planMsg = msg => { $("planStatus").textContent = msg; };
 function openEditor() {
   planMsg("");
@@ -1331,7 +1398,7 @@ function closeEditor() {
   document.body.style.overflow = "";
   $("edStage").replaceChildren(); $("edThumbs").replaceChildren();
   if (ed.doc) { ed.doc.destroy(); ed.doc = null; }
-  ed.src = null; ed.sel = null;
+  ed.src = null; ed.base = null; ed.sel = null;
 }
 async function renderPdfPage(n, maxSide = 2400) {
   const page = await ed.doc.getPage(n);
@@ -1344,11 +1411,44 @@ async function renderPdfPage(n, maxSide = 2400) {
   await page.render({ canvasContext: ctx, viewport: vp }).promise;
   return c;
 }
+function rotateCanvas(src, deg) {
+  const a = deg * Math.PI / 180, cos = Math.abs(Math.cos(a)), sin = Math.abs(Math.sin(a));
+  const c = document.createElement("canvas");
+  c.width = Math.round(src.width * cos + src.height * sin);
+  c.height = Math.round(src.width * sin + src.height * cos);
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, c.width, c.height);
+  ctx.translate(c.width / 2, c.height / 2); ctx.rotate(a);
+  ctx.drawImage(src, -src.width / 2, -src.height / 2);
+  return c;
+}
+function setBase(canvas) {
+  ed.base = canvas; ed.angle = 0;
+  $("edAngle").value = "0"; $("edAngleNum").value = "0";
+  showSource(canvas);
+}
+let angleFrame = 0;
+function setAngle(deg) {
+  deg = Math.max(-180, Math.min(180, Math.round(Number(deg) * 2) / 2 || 0));
+  ed.angle = deg;
+  $("edAngle").value = String(deg); $("edAngleNum").value = String(deg);
+  cancelAnimationFrame(angleFrame);
+  angleFrame = requestAnimationFrame(() => { if (ed.base) showSource(deg ? rotateCanvas(ed.base, deg) : ed.base); });
+}
+$("edAngle").addEventListener("input", e => setAngle(e.target.value));
+$("edAngleNum").addEventListener("change", e => setAngle(e.target.value));
+$("edMinus").addEventListener("click", () => setAngle(ed.angle - 1));
+$("edPlus").addEventListener("click", () => setAngle(ed.angle + 1));
+$("edGrid").addEventListener("click", () => {
+  const on = $("edGrid").getAttribute("aria-pressed") !== "true";
+  $("edGrid").setAttribute("aria-pressed", String(on));
+  $("edStage").classList.toggle("grid", on);
+});
 function showSource(canvas) {
   ed.src = canvas; ed.sel = null;
   canvas.className = "ed-canvas";
   const sel = el("div", { class: "ed-sel", hidden: "" });
-  $("edStage").replaceChildren(canvas, sel);
+  $("edStage").replaceChildren(canvas, el("div", { class: "ed-grid" }), sel);
   $("edClear").hidden = true;
 }
 function drawSel() {
@@ -1383,12 +1483,14 @@ function drawSel() {
 $("edClear").addEventListener("click", () => { ed.sel = null; drawSel(); });
 $("edCancel").addEventListener("click", closeEditor);
 $("edRotate").addEventListener("click", () => {
-  if (!ed.src) return;
-  const s = ed.src, c = document.createElement("canvas");
+  if (!ed.base) return;
+  const s = ed.base, c = document.createElement("canvas");
   c.width = s.height; c.height = s.width;
   const ctx = c.getContext("2d");
   ctx.translate(c.width, 0); ctx.rotate(Math.PI / 2); ctx.drawImage(s, 0, 0);
-  showSource(c);
+  const keep = ed.angle;
+  setBase(c);
+  if (keep) setAngle(keep);
 });
 $("edDone").addEventListener("click", () => {
   if (!ed.src) return;
@@ -1421,7 +1523,7 @@ $("planFile").addEventListener("change", async e => {
       const n = ed.doc.numPages;
       const thumbs = $("edThumbs");
       thumbs.hidden = n < 2;
-      showSource(await renderPdfPage(1));
+      setBase(await renderPdfPage(1));
       if (n > 1) {
         thumbs.replaceChildren(el("span", { class: "hint", text: "Wybierzcie stronę z rzutem:" }));
         for (let i = 1; i <= Math.min(n, 30); i++) {
@@ -1429,7 +1531,7 @@ $("planFile").addEventListener("change", async e => {
           b.append(await renderPdfPage(i, 160), el("span", { text: String(i) }));
           b.addEventListener("click", async () => {
             thumbs.querySelectorAll(".ed-thumb").forEach(t => t.setAttribute("aria-pressed", String(t === b)));
-            showSource(await renderPdfPage(i));
+            setBase(await renderPdfPage(i));
           });
           thumbs.append(b);
         }
@@ -1443,7 +1545,7 @@ $("planFile").addEventListener("change", async e => {
       c.getContext("2d").drawImage(img, 0, 0);
       openEditor();
       $("edThumbs").hidden = true;
-      showSource(c);
+      setBase(c);
     }
     renderPrep();
   } catch {
@@ -1497,7 +1599,7 @@ function clientPlan({ highlight = null, mini = false, still = false } = {}) {
   roomList().forEach((r, i) => {
     if (r.x === null || r.x === undefined) return;
     const nm = roomName(r);
-    const cls = "marker" + (highlight && r.id !== highlight ? " dim" : "");
+    const cls = "marker" + (highlight && r.id !== highlight ? " dim" : nm ? "" : " todo");
     const attrs = { class: cls, style: `left:${r.x}%;top:${r.y}%`, title: nm || "Do wybrania", text: String(i + 1) + (nm ? "" : "?") };
     if (mini || still) { fig.append(el("span", { ...attrs, "aria-hidden": "true" })); return; }
     const m = el("button", { ...attrs, type: "button", "aria-label": `${i + 1}. ${nm || "do wybrania"}` });
@@ -1610,7 +1712,7 @@ function renderClientRooms() {
   $("clientPlanBox").hidden = designer || !state.prep.plan; $("assignGroup").hidden = designer; $("roomCards").hidden = designer;
   const bpNote = " Jeśli przy jakimś pytaniu nie macie zdania, wybierzcie „Bez preferencji”. Dobiorę rozwiązanie, które najlepiej pasuje do wnętrza.";
   if (designer) {
-    $("roomsLead").textContent = "Tu widzisz pytania dla każdego rodzaju pomieszczenia. Rozwiń wybrane i odznacz pytania, których nie chcesz zadawać. Same pomieszczenia ustawiasz w zakładce Przygotowanie.";
+    $("roomsLead").textContent = "Tu ustawiasz pytania dla każdego rodzaju pomieszczenia. Klient zobaczy tylko pytania o pomieszczenia, które są w ankiecie: te, które ustawiłaś w Przygotowaniu, i te, które sam wybierze. Nie musisz niczego zmieniać, wtedy zobaczy standardowe pytania.";
     renderTypeCards();
   } else {
     $("roomsLead").textContent = (state.prep.plan
@@ -1623,7 +1725,7 @@ function renderClientRooms() {
   roomList().forEach((r, i) => {
     const isExtra = state.extra.includes(r);
     const row = el("div", { class: "row", "data-room-row": r.id });
-    row.append(el("span", { class: "num" + (r.x === null || r.x === undefined ? " ghost" : ""), text: String(i + 1) }));
+    row.append(el("span", { class: "num" + (r.x === null || r.x === undefined ? " ghost" : ""), "data-num-for": r.id, text: String(i + 1) }));
     if (r.type && !isExtra) {
       row.append(el("span", { class: "fixed grow", text: fixedName(r) }));
     } else {
@@ -1684,6 +1786,10 @@ function renderRoomCards() {
   });
   box.replaceChildren(...keep);
   if (!keep.length) box.append(el("p", { class: "empty", text: "Wybierzcie przeznaczenie pomieszczeń powyżej, a pojawią się pytania." }));
+  document.querySelectorAll("#clientRows [data-num-for]").forEach(n => {
+    const r = roomList().find(x => x.id === n.dataset.numFor);
+    n.classList.toggle("todo", !!r && !roomType(r));
+  });
   renderNotes();
   renderHints();
   refresh();
@@ -1700,11 +1806,27 @@ function renderHints() {
 
 /* ---------- Widoczność pytań zależnych ---------- */
 function refresh() {
-  form.querySelectorAll("[data-parent]").forEach(b => {
-    const v = values(b.dataset.parent);
-    b.hidden = !b.dataset.when.split("|").some(w => v.includes(w));
-  });
+  for (let pass = 0; pass < 2; pass++) {
+    form.querySelectorAll("[data-parent]").forEach(b => {
+      if (b.classList.contains("cond") && state.mode !== "client") { b.hidden = false; return; }
+      const v = values(b.dataset.parent);
+      b.hidden = !b.dataset.when.split("|").some(w => v.includes(w));
+    });
+  }
 }
+/* Ponowne kliknięcie zaznaczonej odpowiedzi (jednokrotny wybór) ją odznacza */
+form.addEventListener("pointerdown", e => {
+  const chip = e.target.closest(".chip");
+  const inp = chip && chip.querySelector('input[type="radio"]');
+  if (inp) inp.dataset.was = inp.checked ? "1" : "";
+}, true);
+form.addEventListener("click", e => {
+  const inp = e.target;
+  if (inp.type !== "radio" || inp.dataset.was !== "1") return;
+  inp.dataset.was = "";
+  inp.checked = false;
+  inp.dispatchEvent(new Event("change", { bubbles: true }));
+});
 form.addEventListener("change", e => {
   saveAnswers();
   if (e.target.name && e.target.name.startsWith("funkcja_")) renderRoomCards();
