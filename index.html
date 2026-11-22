@@ -204,11 +204,21 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px
 .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .thumb-del { position: absolute; top: 4px; right: 4px; width: 26px; height: 26px; border-radius: 13px; border: 0; background: rgba(0,0,0,.6); color: #fff; cursor: pointer; }
 .summary .thumbs { margin-top: 6px; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); }
-.q-toggle { display: none; align-items: center; gap: 6px; justify-self: start; font-size: 0.78rem; color: var(--muted); background: var(--accent-soft); padding: 2px 9px 2px 6px; border-radius: 6px; cursor: pointer; }
+.q-tools { display: none; flex-wrap: wrap; gap: 6px; align-items: center; }
+body.designer .q-tools { display: flex; }
+.q-tools.inline { display: none; margin-left: 10px; vertical-align: middle; }
+body.designer .q-tools.inline { display: inline-flex; }
+.tool-btn { border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 6px; min-width: 28px; height: 26px; padding: 0 6px; font: 500 0.8rem var(--font-body); cursor: pointer; }
+.tool-btn.wide { padding: 0 10px; }
+.tool-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.custom-tag { font-size: 0.75rem; color: var(--pin); font-weight: 600; }
+.add-q-btn { display: none; justify-self: start; border-style: dashed; }
+body.designer .add-q-btn { display: inline-block; }
+.q-form { display: grid; gap: 12px; background: var(--note); border-radius: 10px; padding: 14px 16px; }
+.q-toggle { display: inline-flex; align-items: center; gap: 6px; justify-self: start; font-size: 0.78rem; color: var(--muted); background: var(--accent-soft); padding: 2px 9px 2px 6px; border-radius: 6px; cursor: pointer; }
 .q-toggle input { margin: 0; accent-color: var(--accent); }
-body.designer .q-toggle { display: inline-flex; }
-.q.off > :not(.q-toggle) { opacity: .4; }
-.q.off > .q-toggle { background: var(--note); }
+.q.off > :not(.q-tools) { opacity: .4; }
+.q.off > .q-tools .q-toggle { background: var(--note); }
 body.client .q.off { display: none !important; }
 body.client .all-off { display: none !important; }
 details.type-card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 20px; }
@@ -254,11 +264,12 @@ details.type-card .q input[type="text"], details.type-card .q input[type="number
 .link-box { display: flex; flex-wrap: wrap; gap: 8px; }
 .link-box input { flex: 1 1 240px; font-size: 0.85rem; }
 .thanks { background: var(--accent-soft); border-radius: 12px; padding: 18px 20px; display: grid; gap: 6px; }
+body.template #planFile, body.template #prep .file-label, body.template #sampleBtn, body.template #clearPlanBtn, body.template #planHint, body.template #planStatus { display: none !important; }
 body.readonly #form .chip, body.readonly #form input, body.readonly #form select, body.readonly #form textarea { pointer-events: none; }
 body.readonly #form .file-label, body.readonly #form .thumb-del, body.readonly #noteMode, body.readonly #addExtra, body.readonly #reset, body.readonly .card-notes .link-btn, body.readonly #notesList .icon-btn { display: none !important; }
 @media print {
   body { background: #ffffff; color: #000000; }
-  nav.steps, .app-bar, .nav-bottom, .top-row, .sync, #uwagi_koncowe, label[for="uwagi_koncowe"], .link-btn, .toast, #sendNote, .q-toggle { display: none !important; }
+  nav.steps, .app-bar, .nav-bottom, .top-row, .sync, #uwagi_koncowe, label[for="uwagi_koncowe"], .link-btn, .toast, #sendNote, .q-tools, .add-q-btn { display: none !important; }
   .summary dl { grid-template-columns: 1fr 2fr; }
   .summary section { break-inside: avoid; }
   .sum-edit { border: 0; padding: 0; resize: none; }
@@ -664,7 +675,7 @@ const SALON = [
     checks("elementy", "Co ma się znaleźć w salonie?", ["Kominek", "Kącik do czytania", "Biblioteczka", "Miejsce do zabawy dla dzieci", "Barek", "Duże rośliny", "Biurko"]),
     uwagi(),
 ];
-const heading = label => ({ type: "heading", label });
+const heading = label => ({ type: "heading", label, id: "h_" + label.toLowerCase().replace(/[^a-ząćęłńóśźż]+/g, "_") });
 const noUwagi = qs => qs.filter(q => q.id !== "uwagi");
 const ROOMS = {
   "Kuchnia": KUCHNIA,
@@ -851,17 +862,19 @@ const ONLINE = location.protocol.startsWith("http") && !/claude|anthropic/i.test
 const TOKEN = params.get("t");
 const EDIT_ID = params.get("edytuj");
 const VIEW_ID = params.get("odpowiedzi");
+const TPL_ID = params.get("wzor");
 /* local: podgląd bez bazy · panel: lista ankiet · edit: przygotowanie ankiety · view: odpowiedzi klienta · client: ankieta klienta */
-const APP = !ONLINE ? "local" : TOKEN ? "client" : VIEW_ID ? "view" : EDIT_ID ? "edit" : "panel";
+const APP = !ONLINE ? "local" : TOKEN ? "client" : VIEW_ID ? "view" : EDIT_ID ? "edit" : TPL_ID ? "template" : "panel";
 /* Link dla klienta: adres kończący się na #klient otwiera od razu widok klienta */
 const CLIENT_LINK = (APP === "local" && location.hash === "#klient") || APP === "client" || APP === "view";
-const KEY = APP === "local" ? "ankieta-wnetrzarska-v2" + (CLIENT_LINK ? "-klient" : "") : `ankieta-${APP}-${TOKEN || EDIT_ID || VIEW_ID || ""}`;
+const KEY = APP === "local" ? "ankieta-wnetrzarska-v2" + (CLIENT_LINK ? "-klient" : "") : `ankieta-${APP}-${TOKEN || EDIT_ID || VIEW_ID || TPL_ID || ""}`;
 let uid = 0;
 const newId = () => "r" + Date.now().toString(36) + (uid++);
-const state = { mode: "designer", prep: { client: "", greeting: "", plan: null, rooms: [], offQ: [] }, extra: [], answers: {}, photos: {}, notes: [] };
+const state = { mode: "designer", prep: { client: "", greeting: "", plan: null, rooms: [], offQ: [], custom: [], order: {} }, extra: [], answers: {}, photos: {}, notes: [] };
 function localSnapshot() {
   if (APP === "local") return state;
   if (APP === "view") return null;
+  if (APP === "template") return { mode: state.mode };
   return { mode: state.mode, answers: state.answers, extra: state.extra, notes: state.notes };
 }
 const persist = () => {
@@ -884,15 +897,39 @@ const el = (tag, attrs = {}, ...kids) => {
 };
 const $ = id => document.getElementById(id);
 
-function renderQ(q, prefix, ctx) {
-  if (q.type === "heading") return el("h3", { class: "room-sub", text: q.label });
+function moveTools(secKey, q) {
+  const up = el("button", { type: "button", class: "tool-btn", "aria-label": "Przesuń wyżej: " + q.label, title: "Przesuń wyżej", text: "↑" });
+  const down = el("button", { type: "button", class: "tool-btn", "aria-label": "Przesuń niżej: " + q.label, title: "Przesuń niżej", text: "↓" });
+  up.addEventListener("click", e => { e.preventDefault(); moveQ(secKey, q.id, -1); });
+  down.addEventListener("click", e => { e.preventDefault(); moveQ(secKey, q.id, 1); });
+  return [up, down];
+}
+function renderQ(q, prefix, ctx, secKey) {
+  if (q.type === "heading") {
+    const h = el("h3", { class: "room-sub" }, el("span", { text: q.label }));
+    if (secKey) h.append(el("span", { class: "q-tools inline" }, ...moveTools(secKey, q)));
+    return h;
+  }
   const id = prefix + q.id;
   const wrap = el("div", { class: "q", "data-q": id, "data-label": q.label, "data-key": keyOf(id) });
   if (ctx) wrap.dataset.ctx = ctx;
   const tgBox = el("input", { type: "checkbox", "aria-label": "Pytanie w ankiecie: " + q.label });
   tgBox.checked = true;
   tgBox.addEventListener("change", e => { e.stopPropagation(); setOff(wrap.dataset.key, !tgBox.checked); });
-  wrap.append(el("label", { class: "q-toggle" }, tgBox, el("span", { text: "W ankiecie" })));
+  const tools = el("div", { class: "q-tools" }, el("label", { class: "q-toggle" }, tgBox, el("span", { text: "W ankiecie" })));
+  if (secKey) tools.append(...moveTools(secKey, q));
+  if (secKey && q.custom) {
+    const edit = el("button", { type: "button", class: "tool-btn wide", text: "Edytuj" });
+    edit.addEventListener("click", e => { e.preventDefault(); openQuestionForm(secKey, wrap, q); });
+    const del = el("button", { type: "button", class: "tool-btn wide", text: "Usuń" });
+    del.addEventListener("click", e => {
+      e.preventDefault();
+      if (!del.dataset.armed) { del.dataset.armed = "1"; del.textContent = "Na pewno usunąć?"; setTimeout(() => { delete del.dataset.armed; del.textContent = "Usuń"; }, 4000); return; }
+      deleteCustom(q.id);
+    });
+    tools.append(el("span", { class: "custom-tag", text: "Twoje pytanie" }), edit, del);
+  }
+  wrap.append(tools);
   const labelId = id + "__label";
   const choice = q.type === "radio" || q.type === "checks";
   wrap.append(choice ? el("div", { class: "label", id: labelId, text: q.label }) : el("label", { class: "label", for: id, id: labelId, text: q.label }));
@@ -1010,7 +1047,7 @@ function applyOff(root = document) {
   root.querySelectorAll(".q[data-key]").forEach(w => {
     const off = state.prep.offQ.includes(w.dataset.key);
     w.classList.toggle("off", off);
-    const t = w.querySelector(":scope > .q-toggle");
+    const t = w.querySelector(":scope > .q-tools > .q-toggle");
     t.querySelector("input").checked = !off;
     t.querySelector("span").textContent = off ? "Wyłączone" : "W ankiecie";
   });
@@ -1026,17 +1063,112 @@ const form = $("form");
 
 /* ---------- Część 1 ---------- */
 const pane1 = $("pane1");
-pane1.append(el("div", { class: "pane-head" },
-  el("h2", { text: "Dom i domownicy" }),
-  el("p", { class: "lead", text: "Pytania o cały dom i o to, jak w nim żyjecie." })));
-PART1.forEach(g => {
-  const sec = el("section", { class: "group", "data-section": g.title, "data-group": g.title }, el("h3", { text: g.title }));
-  g.questions.forEach(q => sec.append(renderQ(q, "", null)));
-  pane1.append(sec);
-});
-pane1.append(el("div", { class: "nav-bottom" },
-  el("button", { type: "button", class: "btn", "data-go": "0", id: "back1", text: "Wstecz" }),
-  el("button", { type: "button", class: "btn primary", "data-go": "2", text: "Dalej" })));
+function renderPart1() {
+  pane1.replaceChildren(el("div", { class: "pane-head" },
+    el("h2", { text: "Dom i domownicy" }),
+    el("p", { class: "lead", text: "Pytania o cały dom i o to, jak w nim żyjecie." })));
+  PART1.forEach(g => {
+    const key = "g:" + g.title;
+    const sec = el("section", { class: "group", "data-section": g.title, "data-group": g.title }, el("h3", { text: g.title }));
+    sectionQuestions(key).forEach(q => sec.append(renderQ(q, "", null, key)));
+    sec.append(addQuestionButton(key));
+    pane1.append(sec);
+  });
+  pane1.append(el("div", { class: "nav-bottom" },
+    el("button", { type: "button", class: "btn", "data-go": "0", id: "back1", text: "Wstecz", hidden: CLIENT_LINK || state.mode === "client" ? "" : null }),
+    el("button", { type: "button", class: "btn primary", "data-go": "2", text: "Dalej" })));
+}
+
+/* ---------- Własne pytania i kolejność ---------- */
+const CUSTOM_TYPES = { text: "Krótki tekst", area: "Dłuższy opis", num: "Liczba", radio: "Wybór jednej odpowiedzi", checks: "Wybór kilku odpowiedzi" };
+function baseQuestions(secKey) {
+  if (secKey.startsWith("g:")) return (PART1.find(g => g.title === secKey.slice(2)) || { questions: [] }).questions;
+  return ROOMS[secKey.slice(2)] || [];
+}
+function sectionQuestions(secKey) {
+  const custom = (state.prep.custom || []).filter(c => c.section === secKey)
+    .map(c => ({ id: c.id, label: c.label, type: c.type, options: c.options || [], custom: true }));
+  const all = [...baseQuestions(secKey), ...custom];
+  const ord = (state.prep.order || {})[secKey];
+  if (!Array.isArray(ord) || !ord.length) return all;
+  const rank = (q, i) => { const k = ord.indexOf(q.id); return k >= 0 ? k : ord.length + i; };
+  return all.map((q, i) => [q, rank(q, i)]).sort((a, b) => a[1] - b[1]).map(x => x[0]);
+}
+function moveQ(secKey, qid, dir) {
+  const ids = sectionQuestions(secKey).map(q => q.id);
+  const i = ids.indexOf(qid), j = i + dir;
+  if (i < 0 || j < 0 || j >= ids.length) return;
+  [ids[i], ids[j]] = [ids[j], ids[i]];
+  state.prep.order = { ...(state.prep.order || {}), [secKey]: ids };
+  rerenderStructure(qid);
+}
+function deleteCustom(qid) {
+  state.prep.custom = (state.prep.custom || []).filter(c => c.id !== qid);
+  for (const k of Object.keys(state.prep.order || {})) state.prep.order[k] = state.prep.order[k].filter(x => x !== qid);
+  state.prep.offQ = state.prep.offQ.filter(k => !k.endsWith(qid));
+  rerenderStructure();
+}
+function addQuestionButton(secKey) {
+  const b = el("button", { type: "button", class: "btn small add-q-btn", text: "+ Dodaj pytanie" });
+  b.addEventListener("click", () => openQuestionForm(secKey, b, null));
+  return b;
+}
+function openQuestionForm(secKey, anchor, existing) {
+  const fid = "qf_" + newId();
+  const label = el("input", { type: "text", id: fid + "_l", placeholder: "np. Czy macie kolekcję winyli?" });
+  const type = el("select", { id: fid + "_t" });
+  Object.entries(CUSTOM_TYPES).forEach(([v, t]) => type.append(el("option", { value: v, text: t })));
+  const opts = el("textarea", { id: fid + "_o", placeholder: "Każda odpowiedź w osobnej linii" });
+  const optsWrap = el("div", { class: "q" }, el("label", { class: "label", for: fid + "_o", text: "Odpowiedzi do wyboru" }), opts);
+  const err = el("p", { class: "error", role: "alert" });
+  if (existing) { label.value = existing.label; type.value = existing.type; opts.value = (existing.options || []).join("\n"); }
+  const syncOpts = () => { optsWrap.hidden = !(type.value === "radio" || type.value === "checks"); };
+  type.addEventListener("change", syncOpts); syncOpts();
+  const save = el("button", { type: "button", class: "btn small primary", text: existing ? "Zapisz zmiany" : "Dodaj pytanie" });
+  const cancel = el("button", { type: "button", class: "btn small", text: "Anuluj" });
+  const box = el("div", { class: "q-form" },
+    el("strong", { text: existing ? "Edycja pytania" : "Nowe pytanie" }),
+    el("div", { class: "q" }, el("label", { class: "label", for: fid + "_l", text: "Treść pytania" }), label),
+    el("div", { class: "q" }, el("label", { class: "label", for: fid + "_t", text: "Rodzaj odpowiedzi" }), type),
+    optsWrap, err, el("div", { class: "btn-row" }, save, cancel));
+  cancel.addEventListener("click", () => box.replaceWith(anchor));
+  save.addEventListener("click", () => {
+    const text = label.value.trim();
+    const options = [...new Set(opts.value.split("\n").map(x => x.trim()).filter(Boolean))];
+    if (!text) { err.textContent = "Wpisz treść pytania."; return; }
+    if ((type.value === "radio" || type.value === "checks") && options.length < 2) { err.textContent = "Wpisz co najmniej dwie odpowiedzi, każdą w osobnej linii."; return; }
+    const data = { label: text, type: type.value, options: (type.value === "radio" || type.value === "checks") ? options : [] };
+    if (existing) {
+      const c = state.prep.custom.find(x => x.id === existing.id);
+      Object.assign(c, data);
+      rerenderStructure(existing.id);
+    } else {
+      const id = "c" + newId();
+      state.prep.custom = [...(state.prep.custom || []), { id, section: secKey, ...data }];
+      rerenderStructure(id);
+    }
+  });
+  anchor.replaceWith(box);
+  label.focus();
+}
+function rerenderStructure(focusId) {
+  saveAnswers();
+  const openTypes = [...$("typeCards").querySelectorAll("details[open] > summary")].map(x => x.textContent);
+  renderPart1();
+  $("typeCards").replaceChildren();
+  $("roomCards").replaceChildren();
+  renderClientRooms();
+  $("typeCards").querySelectorAll("details > summary").forEach(sm => { if (openTypes.includes(sm.textContent)) sm.parentElement.open = true; });
+  applyValues(form);
+  applyOff();
+  refresh();
+  photoFieldsRedraw();
+  persist();
+  if (focusId) {
+    const target = [...document.querySelectorAll(".q[data-q], h3.room-sub")].find(x => x.offsetParent && ((x.dataset.q || "").endsWith(focusId)));
+    if (target) target.scrollIntoView({ block: "center" });
+  }
+}
 
 /* ---------- Wartości formularza ---------- */
 function values(name) {
@@ -1326,7 +1458,8 @@ function renderTypeCards() {
   if (!box.children.length) {
     [...ROOM_TYPES, "Inne"].forEach(t => {
       const body = el("div", { class: "body" });
-      ROOMS[t].forEach(q => body.append(renderQ(q, `pok_t_${slug(t)}_`, null)));
+      sectionQuestions("r:" + t).forEach(q => body.append(renderQ(q, `pok_t_${slug(t)}_`, null, "r:" + t)));
+      body.append(addQuestionButton("r:" + t));
       box.append(el("details", { class: "type-card" }, el("summary", { text: t }), body));
     });
     refresh();
@@ -1540,7 +1673,7 @@ function renderRoomCards() {
       card = el("section", { class: "room", "data-key": key });
       card.append(el("div", { class: "room-head" }, el("span", { class: "num", text: String(i + 1) }), el("h2", {})));
       card.append(el("div", { class: "card-ref" }));
-      ROOMS[t].forEach(q => card.append(renderQ(q, `pok_${r.id}_${slug(t)}_`, null)));
+      sectionQuestions("r:" + t).forEach(q => card.append(renderQ(q, `pok_${r.id}_${slug(t)}_`, null)));
       applyValues(card);
       applyOff(card);
     }
@@ -1595,8 +1728,8 @@ function renderHeader() {
   $("sendNote").hidden = !CLIENT_LINK || APP === "view";
   $("modeBtn").textContent = client ? "Wróć do przygotowania" : "Zobacz jako klient";
   $("stepPrep").hidden = client;
-  $("back1").hidden = client;
-  $("title").textContent = state.prep.client ? `Ankieta: ${state.prep.client}` : "Ankieta wnętrzarska";
+  if ($("back1")) $("back1").hidden = client;
+  $("title").textContent = APP === "template" ? `Wzór: ${state.prep.client || "bez nazwy"}` : state.prep.client ? `Ankieta: ${state.prep.client}` : "Ankieta wnętrzarska";
   $("greeting").textContent = state.prep.greeting;
   $("greeting").hidden = !state.prep.greeting;
 }
@@ -1719,6 +1852,8 @@ function migrate() {
   if (!Array.isArray(state.extra)) state.extra = [];
   state.answers = state.answers || {};
   state.photos = state.photos || {};
+  if (!Array.isArray(state.prep.custom)) state.prep.custom = [];
+  if (!state.prep.order || typeof state.prep.order !== "object") state.prep.order = {};
   /* Zmiana nazwy „WC” na „Toaleta” */
   state.prep.rooms.forEach(r => { if (r.type === "WC") r.type = "Toaleta"; });
   state.prep.offQ = state.prep.offQ.map(k => k.replace(/^pok_wc_/, "pok_toaleta_"));
@@ -1734,6 +1869,7 @@ function startUI(step) {
   if (CLIENT_LINK) state.mode = "client";
   $("main").hidden = false;
   $("panel").hidden = true;
+  renderPart1();
   applyValues(form);
   applyOff();
   renderPrep(); renderHeader(); renderClientRooms(); refresh();
@@ -1764,16 +1900,17 @@ function loadScript(src) {
 }
 function syncStatus(t) { $("syncStatus").textContent = t; }
 function remotePayload() {
-  if (APP === "edit") return { client_name: state.prep.client, greeting: state.prep.greeting, plan: state.prep.plan, rooms: state.prep.rooms, off_q: state.prep.offQ };
+  if (APP === "edit") return { client_name: state.prep.client, greeting: state.prep.greeting, plan: state.prep.plan, rooms: state.prep.rooms, off_q: state.prep.offQ, custom: state.prep.custom, q_order: state.prep.order };
+  if (APP === "template") return { name: state.prep.client, greeting: state.prep.greeting, rooms: state.prep.rooms, off_q: state.prep.offQ, custom: state.prep.custom, q_order: state.prep.order };
   if (APP === "client") return { p_token: TOKEN, p_answers: state.answers, p_extra: state.extra, p_notes: state.notes };
   return null;
 }
 function remoteSync() {
-  if (!sb || (APP !== "edit" && APP !== "client")) return;
+  if (!sb || (APP !== "edit" && APP !== "client" && APP !== "template")) return;
   if (JSON.stringify(remotePayload()) === sync.last) return;
   clearTimeout(sync.timer);
   syncStatus("Zapisuję…");
-  sync.timer = setTimeout(flush, APP === "edit" ? 700 : 1200);
+  sync.timer = setTimeout(flush, APP === "client" ? 1200 : 700);
 }
 async function flush() {
   clearTimeout(sync.timer); sync.timer = null;
@@ -1782,7 +1919,9 @@ async function flush() {
   if (json === sync.last) { syncStatus("Zapisano ✓"); return true; }
   const { error } = APP === "edit"
     ? await sb.from("surveys").update({ ...p, updated_at: new Date().toISOString() }).eq("id", EDIT_ID)
-    : await sb.rpc("save_response", { ...p, p_submit: false });
+    : APP === "template"
+      ? await sb.from("templates").update({ ...p, updated_at: new Date().toISOString() }).eq("id", TPL_ID)
+      : await sb.rpc("save_response", { ...p, p_submit: false });
   if (error) {
     syncStatus("Nie udało się zapisać. Sprawdźcie połączenie z internetem. Spróbuję ponownie za chwilę.");
     sync.timer = setTimeout(flush, 5000);
@@ -1844,16 +1983,62 @@ async function showPanel() {
   const list = el("div", { class: "survey-list" }, el("p", { class: "empty", text: "Wczytuję ankiety…" }));
   const newBtn = el("button", { type: "button", class: "btn primary", text: "Nowa ankieta" });
   const outBtn = el("button", { type: "button", class: "btn", text: "Wyloguj" });
-  newBtn.addEventListener("click", async () => {
-    newBtn.disabled = true;
-    const { data, error } = await sb.from("surveys").insert({ client_name: "" }).select("id").single();
-    if (error) { newBtn.disabled = false; alertBox(list, "Nie udało się utworzyć ankiety. Spróbuj ponownie."); return; }
+  const chooser = el("div", { class: "q-form", hidden: "" });
+  const createFrom = async tpl => {
+    chooser.querySelectorAll("button").forEach(b => b.disabled = true);
+    const row = tpl
+      ? { client_name: "", greeting: tpl.greeting, rooms: (tpl.rooms || []).map(r => ({ ...r, id: newId(), x: null, y: null })), off_q: tpl.off_q, custom: tpl.custom, q_order: tpl.q_order }
+      : { client_name: "" };
+    const { data, error } = await sb.from("surveys").insert(row).select("id").single();
+    if (error) { chooser.querySelectorAll("button").forEach(b => b.disabled = false); alertBox(list, "Nie udało się utworzyć ankiety. Spróbuj ponownie."); return; }
     location.href = `?edytuj=${data.id}`;
+  };
+  newBtn.addEventListener("click", async () => {
+    if (!templates.length) return createFrom(null);
+    const full = el("button", { type: "button", class: "btn", text: "Pełna ankieta (wszystkie pytania)" });
+    full.addEventListener("click", () => createFrom(null));
+    const tplBtns = templates.map(t => { const b = el("button", { type: "button", class: "btn primary", text: t.name || "Wzór bez nazwy" }); b.addEventListener("click", () => createFrom(t)); return b; });
+    const cancel = el("button", { type: "button", class: "btn small", text: "Anuluj" });
+    cancel.addEventListener("click", () => { chooser.hidden = true; });
+    chooser.replaceChildren(el("strong", { text: "Na podstawie czego przygotować ankietę?" }), el("div", { class: "btn-row" }, ...tplBtns, full), el("div", { class: "btn-row" }, cancel));
+    chooser.hidden = false;
   });
   outBtn.addEventListener("click", async () => { await sb.auth.signOut(); location.href = location.pathname; });
+  const tplList = el("div", { class: "survey-list" });
+  const newTpl = el("button", { type: "button", class: "btn small", text: "+ Nowy wzór" });
+  newTpl.addEventListener("click", async () => {
+    newTpl.disabled = true;
+    const { data, error } = await sb.from("templates").insert({ name: "Nowy wzór" }).select("id").single();
+    if (error) { newTpl.disabled = false; alertBox(tplList, "Nie udało się utworzyć wzoru. Czy uruchomiłaś migrację bazy (migracja-2-wzory.sql)?"); return; }
+    location.href = `?wzor=${data.id}`;
+  });
   showPanelView(
     el("div", { class: "panel-head" }, el("h1", { text: "Twoje ankiety" }), el("div", { class: "btn-row" }, newBtn, outBtn)),
-    list);
+    chooser, list,
+    el("div", { class: "panel-head" }, el("h2", { text: "Moje wzory" }), newTpl),
+    el("p", { class: "hint", text: "Wzór to gotowy zestaw pytań, np. dla domu, mieszkania albo jednego pokoju. Przy tworzeniu nowej ankiety wybierasz wzór, a potem możesz go jeszcze dopasować do klienta." }),
+    tplList);
+  let templates = [];
+  const tplRes = await sb.from("templates").select("*").order("created_at");
+  if (tplRes.error) tplList.replaceChildren(el("p", { class: "hint", text: "Wzory będą dostępne po aktualizacji bazy danych." }));
+  else {
+    templates = tplRes.data;
+    tplList.replaceChildren(...(templates.length ? templates.map(t => {
+      const info = el("p", { class: "survey-meta", role: "status" });
+      const del = el("button", { type: "button", class: "btn small", text: "Usuń" });
+      del.addEventListener("click", async () => {
+        if (!del.dataset.armed) { del.dataset.armed = "1"; del.textContent = "Na pewno usunąć wzór?"; setTimeout(() => { delete del.dataset.armed; del.textContent = "Usuń"; }, 4000); return; }
+        const { error } = await sb.from("templates").delete().eq("id", t.id);
+        if (error) { info.textContent = "Nie udało się usunąć wzoru."; return; }
+        showPanel();
+      });
+      const n = (t.off_q || []).length, c = (t.custom || []).length;
+      return el("div", { class: "survey-item" },
+        el("div", { class: "survey-top" }, el("h2", { text: t.name || "Wzór bez nazwy" })),
+        el("p", { class: "survey-meta", text: `Wyłączone pytania: ${n} · Twoje pytania: ${c} · Pomieszczenia: ${(t.rooms || []).length}` }),
+        el("div", { class: "survey-actions" }, el("a", { class: "btn small", href: `?wzor=${t.id}`, text: "Edytuj wzór" }), del), info);
+    }) : [el("p", { class: "empty", text: "Nie masz jeszcze wzorów. Utwórz go przyciskiem „+ Nowy wzór” albo zapisz gotową ankietę jako wzór." })]));
+  }
   const { data, error } = await sb.from("surveys").select("id,client_name,status,created_at,updated_at,submitted_at,token").order("created_at", { ascending: false });
   if (error) { list.replaceChildren(el("p", { class: "error", text: "Nie udało się wczytać ankiet. Odśwież stronę." })); return; }
   if (!data.length) { list.replaceChildren(el("p", { class: "empty", text: "Nie masz jeszcze żadnych ankiet. Kliknij „Nowa ankieta”, żeby przygotować pierwszą." })); return; }
@@ -1900,7 +2085,7 @@ function appBar(...kids) {
 async function bootEdit() {
   const { data, error } = await sb.from("surveys").select("*").eq("id", EDIT_ID).single();
   if (error || !data) return fatal("Nie znaleziono tej ankiety. Mogła zostać usunięta.", true);
-  state.prep = { client: data.client_name, greeting: data.greeting, plan: data.plan, rooms: data.rooms || [], offQ: data.off_q || [] };
+  state.prep = { client: data.client_name, greeting: data.greeting, plan: data.plan, rooms: data.rooms || [], offQ: data.off_q || [], custom: data.custom || [], order: data.q_order || {} };
   try {
     const saved = JSON.parse(localStorage.getItem(KEY) || "null");
     if (saved) Object.assign(state, { mode: saved.mode || "designer", answers: saved.answers || {}, extra: saved.extra || [], notes: saved.notes || [] });
@@ -1916,8 +2101,58 @@ async function bootEdit() {
     el("strong", { text: "Link dla klienta" }),
     el("p", { text: "Wszystko, co tu ustawisz, zapisuje się samo. Gdy ankieta będzie gotowa, skopiuj link i wyślij go klientowi. Klient nie musi się nigdzie logować." }),
     el("div", { class: "link-box" }, input, copy), msg);
+  $("linkNote").after(await saveAsTemplateBox());
   syncStatus("Zapisano ✓");
   startUI();
+}
+
+async function saveAsTemplateBox() {
+  const { data: tpls, error } = await sb.from("templates").select("id,name").order("created_at");
+  const box = el("div", { class: "note" }, el("strong", { text: "Zapisz jako wzór" }));
+  if (error) { box.append(el("p", { text: "Wzory będą dostępne po aktualizacji bazy danych." })); return box; }
+  box.append(el("p", { text: "Zapisz pytania tej ankiety (wyłączone pytania, Twoje pytania, kolejność, powitanie i listę pomieszczeń) jako wzór do kolejnych ankiet. Dane klienta i rzut nie trafią do wzoru." }));
+  const msg = el("p", { class: "hint", role: "status" });
+  const name = el("input", { type: "text", placeholder: "Nazwa wzoru, np. Mieszkanie", "aria-label": "Nazwa nowego wzoru" });
+  const saveNew = el("button", { type: "button", class: "btn small primary", text: "Zapisz jako nowy wzór" });
+  const tplData = () => ({ greeting: state.prep.greeting, rooms: state.prep.rooms.map(r => ({ id: newId(), label: r.label, type: r.type, x: null, y: null })), off_q: state.prep.offQ, custom: state.prep.custom, q_order: state.prep.order, updated_at: new Date().toISOString() });
+  saveNew.addEventListener("click", async () => {
+    if (!name.value.trim()) { msg.textContent = "Wpisz nazwę wzoru."; name.focus(); return; }
+    const { error } = await sb.from("templates").insert({ name: name.value.trim(), ...tplData() });
+    msg.textContent = error ? "Nie udało się zapisać wzoru." : `Zapisano wzór „${name.value.trim()}”.`;
+    if (!error) name.value = "";
+  });
+  box.append(el("div", { class: "link-box" }, name, saveNew));
+  if (tpls.length) {
+    const sel = el("select", { "aria-label": "Wzór do nadpisania" }, ...tpls.map(t => el("option", { value: t.id, text: t.name || "Wzór bez nazwy" })));
+    const over = el("button", { type: "button", class: "btn small", text: "Nadpisz wybrany wzór" });
+    over.addEventListener("click", async () => {
+      if (!over.dataset.armed) { over.dataset.armed = "1"; over.textContent = "Na pewno nadpisać?"; setTimeout(() => { delete over.dataset.armed; over.textContent = "Nadpisz wybrany wzór"; }, 4000); return; }
+      delete over.dataset.armed; over.textContent = "Nadpisz wybrany wzór";
+      const { error } = await sb.from("templates").update(tplData()).eq("id", sel.value);
+      msg.textContent = error ? "Nie udało się nadpisać wzoru." : "Wzór zaktualizowany.";
+    });
+    box.append(el("div", { class: "link-box" }, sel, over));
+  }
+  box.append(msg);
+  return box;
+}
+
+async function bootTemplate() {
+  const { data, error } = await sb.from("templates").select("*").eq("id", TPL_ID).single();
+  if (error || !data) return fatal("Nie znaleziono tego wzoru. Mógł zostać usunięty.", true);
+  state.prep = { client: data.name, greeting: data.greeting, plan: null, rooms: data.rooms || [], offQ: data.off_q || [], custom: data.custom || [], order: data.q_order || {} };
+  try { const saved = JSON.parse(localStorage.getItem(KEY) || "null"); if (saved) state.mode = saved.mode || "designer"; } catch {}
+  sync.last = JSON.stringify(remotePayload());
+  document.body.classList.add("template");
+  appBar();
+  document.querySelector('label[for="prep_client"]').textContent = "Nazwa wzoru";
+  $("prep_client").placeholder = "np. Mieszkanie, Dom, Jeden pokój";
+  document.querySelector("#prep .pane-head h2").textContent = "Edycja wzoru";
+  document.querySelector("#prep .pane-head .lead").textContent = "Ustaw pytania i domyślną listę pomieszczeń. Nowe ankiety utworzone z tego wzoru dostaną te ustawienia. Rzut wgrywasz już w ankiecie konkretnego klienta.";
+  $("linkNote").replaceChildren(el("strong", { text: "To jest wzór" }), el("p", { text: "Zmiany zapisują się same. Nie zmieniają ankiet, które już utworzyłaś, tylko nowe ankiety tworzone z tego wzoru." }));
+  syncStatus("Zapisano ✓");
+  startUI();
+  $("title").textContent = "Wzór: " + (state.prep.client || "bez nazwy");
 }
 
 async function bootView() {
@@ -1927,7 +2162,7 @@ async function bootView() {
     sb.from("photos").select("id,field,data,created_at").eq("survey_id", VIEW_ID).order("created_at"),
   ]);
   if (e1 || !sv) return fatal("Nie znaleziono tej ankiety. Mogła zostać usunięta.", true);
-  state.prep = { client: sv.client_name, greeting: sv.greeting, plan: sv.plan, rooms: sv.rooms || [], offQ: sv.off_q || [] };
+  state.prep = { client: sv.client_name, greeting: sv.greeting, plan: sv.plan, rooms: sv.rooms || [], offQ: sv.off_q || [], custom: sv.custom || [], order: sv.q_order || {} };
   state.answers = resp?.answers || {}; state.extra = resp?.extra || []; state.notes = resp?.notes || [];
   state.photos = {};
   (pics || []).forEach(p => (state.photos[p.field] ||= []).push({ id: p.id, src: p.data }));
@@ -1944,7 +2179,7 @@ let submitted = false;
 async function bootClient() {
   const { data, error } = await sb.rpc("get_survey", { p_token: TOKEN });
   if (error || !data) return fatal("Ten link jest nieprawidłowy albo ankieta została usunięta. Skontaktujcie się z projektantką.");
-  state.prep = { client: data.client_name, greeting: data.greeting, plan: data.plan, rooms: data.rooms || [], offQ: data.off_q || [] };
+  state.prep = { client: data.client_name, greeting: data.greeting, plan: data.plan, rooms: data.rooms || [], offQ: data.off_q || [], custom: data.custom || [], order: data.q_order || {} };
   state.answers = data.answers || {}; state.extra = data.extra || []; state.notes = data.notes || [];
   state.photos = {};
   (data.photos || []).forEach(p => (state.photos[p.field] ||= []).push({ id: p.id, src: p.data }));
@@ -1991,6 +2226,7 @@ async function boot() {
   if (APP === "panel") return showPanel();
   if (APP === "edit") return bootEdit();
   if (APP === "view") return bootView();
+  if (APP === "template") return bootTemplate();
 }
 boot();
 </script>
